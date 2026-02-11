@@ -1,0 +1,179 @@
+name: Build and Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Release version (e.g., v1.0.0)'
+        required: true
+        default: 'v1.0.0'
+
+jobs:
+  build:
+    strategy:
+      matrix:
+        include:
+          - os: ubuntu-latest
+            artifact_name: phone-mcp-linux-amd64
+            asset_name: phone-mcp-linux-amd64
+          - os: windows-latest
+            artifact_name: phone-mcp.exe
+            asset_name: phone-mcp-windows-amd64.exe
+          - os: macos-latest
+            artifact_name: phone-mcp-macos-arm64
+            asset_name: phone-mcp-macos-arm64
+
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install pyinstaller
+
+      - name: Build executable (Linux)
+        if: matrix.os == 'ubuntu-latest'
+        run: |
+          python -m PyInstaller --onefile --name phone-mcp-linux-amd64 --clean --noconfirm \
+            --collect-all fastmcp --collect-all mcp --collect-all phone_mcp \
+            --hidden-import uvicorn --hidden-import uvicorn.logging \
+            --hidden-import uvicorn.loops --hidden-import uvicorn.loops.auto \
+            --hidden-import uvicorn.protocols --hidden-import uvicorn.protocols.http \
+            --hidden-import uvicorn.protocols.http.auto --hidden-import uvicorn.protocols.websockets \
+            --hidden-import uvicorn.protocols.websockets.auto --hidden-import uvicorn.lifespan \
+            --hidden-import uvicorn.lifespan.on --hidden-import starlette \
+            --hidden-import anyio --hidden-import httpx --hidden-import pydantic \
+            --hidden-import httpcore --hidden-import h11 \
+            --hidden-import PIL --hidden-import PIL.Image \
+            main.py
+
+      - name: Build executable (Windows)
+        if: matrix.os == 'windows-latest'
+        run: |
+          python -m PyInstaller --onefile --name phone-mcp --clean --noconfirm `
+            --collect-all fastmcp --collect-all mcp --collect-all phone_mcp `
+            --hidden-import uvicorn --hidden-import uvicorn.logging `
+            --hidden-import uvicorn.loops --hidden-import uvicorn.loops.auto `
+            --hidden-import uvicorn.protocols --hidden-import uvicorn.protocols.http `
+            --hidden-import uvicorn.protocols.http.auto --hidden-import uvicorn.protocols.websockets `
+            --hidden-import uvicorn.protocols.websockets.auto --hidden-import uvicorn.lifespan `
+            --hidden-import uvicorn.lifespan.on --hidden-import starlette `
+            --hidden-import anyio --hidden-import httpx --hidden-import pydantic `
+            --hidden-import httpcore --hidden-import h11 `
+            --hidden-import PIL --hidden-import PIL.Image `
+            main.py
+
+      - name: Build executable (macOS)
+        if: matrix.os == 'macos-latest'
+        run: |
+          python -m PyInstaller --onefile --name phone-mcp-macos-arm64 --clean --noconfirm \
+            --collect-all fastmcp --collect-all mcp --collect-all phone_mcp \
+            --hidden-import uvicorn --hidden-import uvicorn.logging \
+            --hidden-import uvicorn.loops --hidden-import uvicorn.loops.auto \
+            --hidden-import uvicorn.protocols --hidden-import uvicorn.protocols.http \
+            --hidden-import uvicorn.protocols.http.auto --hidden-import uvicorn.protocols.websockets \
+            --hidden-import uvicorn.protocols.websockets.auto --hidden-import uvicorn.lifespan \
+            --hidden-import uvicorn.lifespan.on --hidden-import starlette \
+            --hidden-import anyio --hidden-import httpx --hidden-import pydantic \
+            --hidden-import httpcore --hidden-import h11 \
+            --hidden-import PIL --hidden-import PIL.Image \
+            main.py
+
+      - name: Rename Windows artifact
+        if: matrix.os == 'windows-latest'
+        run: |
+          Move-Item dist/phone-mcp.exe dist/phone-mcp-windows-amd64.exe
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.asset_name }}
+          path: dist/${{ matrix.asset_name }}
+
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+
+      - name: Display structure of downloaded files
+        run: ls -R artifacts
+
+      - name: Get version
+        id: get_version
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "VERSION=${{ github.event.inputs.version }}" >> $GITHUB_OUTPUT
+          else
+            echo "VERSION=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: ${{ steps.get_version.outputs.VERSION }}
+          name: PhoneMCP ${{ steps.get_version.outputs.VERSION }}
+          body: |
+            ## PhoneMCP ${{ steps.get_version.outputs.VERSION }}
+
+            Android 设备控制 MCP Server - 通过 ADB 远程控制 Android 设备
+
+            ### 下载
+            - **Linux**: `phone-mcp-linux-amd64`
+            - **Windows**: `phone-mcp-windows-amd64.exe`
+            - **macOS (Apple Silicon)**: `phone-mcp-macos-arm64`
+
+            ### 前置要求
+            - 安装 ADB 并添加到 PATH
+            - Android 设备已连接（USB 或 WiFi）
+            - 设备已开启 USB 调试
+
+            ### 使用方法
+            ```bash
+            # SSE 模式（默认）
+            ./phone-mcp-linux-amd64
+
+            # 指定端口
+            ./phone-mcp-linux-amd64 --port 8080
+
+            # STDIO 模式（供 Claude Desktop 调用）
+            ./phone-mcp-linux-amd64 --transport stdio
+            ```
+
+            ### MCP 客户端配置
+            ```json
+            {
+              "mcpServers": {
+                "phone-mcp": {
+                  "url": "http://localhost:8009/Phone/sse"
+                }
+              }
+            }
+            ```
+          files: |
+            artifacts/phone-mcp-linux-amd64/phone-mcp-linux-amd64
+            artifacts/phone-mcp-windows-amd64.exe/phone-mcp-windows-amd64.exe
+            artifacts/phone-mcp-macos-arm64/phone-mcp-macos-arm64
+          draft: false
+          prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+

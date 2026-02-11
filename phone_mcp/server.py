@@ -17,10 +17,9 @@ import io
 import time
 from typing import Any, Dict, Optional
 
+from PIL import Image as PILImage
 from fastmcp import FastMCP
 from fastmcp.utilities.types import Image as MCPImage
-from PIL import Image as PILImage
-
 from phone_mcp.adb import (
     ADBConnection,
     list_devices as adb_list_devices,
