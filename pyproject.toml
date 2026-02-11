@@ -1,0 +1,58 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "phone-mcp"
+version = "0.1.0"
+description = "Android automation via MCP protocol - Control Android devices through ADB"
+readme = "README.md"
+license = {text = "MIT"}
+requires-python = ">=3.10"
+authors = [
+    {name = "kenger"}
+]
+keywords = ["mcp", "android", "adb", "automation", "ai-agent"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Software Development :: Testing",
+    "Topic :: System :: Hardware :: Hardware Drivers",
+]
+dependencies = [
+    "fastmcp>=2.0.0",
+    "Pillow>=10.0.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.0.0",
+    "black>=23.0.0",
+    "mypy>=1.0.0",
+]
+
+[project.scripts]
+phone-mcp = "phone_mcp.server:run"
+
+[project.urls]
+Homepage = "https://github.com/kengerlwl/phone-mcp"
+Repository = "https://github.com/kengerlwl/phone-mcp"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["phone_mcp*"]
+
+[tool.black]
+line-length = 100
+target-version = ['py310', 'py311', 'py312']
+
+[tool.mypy]
+python_version = "3.10"
+warn_return_any = true
+warn_unused_configs = true
+

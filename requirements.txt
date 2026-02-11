@@ -1,0 +1,6 @@
+# Phone MCP - Android automation via MCP protocol
+# Install with: pip install -r requirements.txt
+
+fastmcp>=2.0.0
+Pillow>=10.0.0
+
