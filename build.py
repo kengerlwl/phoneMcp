@@ -58,6 +58,9 @@ def build():
         "--collect-all", "fastmcp",
         "--collect-all", "mcp",
         "--collect-all", "phone_mcp",
+        "--collect-all", "rich",  # 包含 _unicode_data
+        "--collect-all", "lupa",  # fakeredis 需要的 Lua 运行时
+        "--collect-all", "fakeredis",  # 包含 commands.json 等数据文件
         # Hidden imports
         "--hidden-import", "uvicorn",
         "--hidden-import", "uvicorn.logging",

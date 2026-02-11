@@ -47,7 +47,7 @@ jobs:
         if: matrix.os == 'ubuntu-latest'
         run: |
           python -m PyInstaller --onefile --name phone-mcp-linux-amd64 --clean --noconfirm \
-            --collect-all fastmcp --collect-all mcp --collect-all phone_mcp \
+            --collect-all fastmcp --collect-all mcp --collect-all phone_mcp --collect-all rich --collect-all lupa --collect-all fakeredis \
             --hidden-import uvicorn --hidden-import uvicorn.logging \
             --hidden-import uvicorn.loops --hidden-import uvicorn.loops.auto \
             --hidden-import uvicorn.protocols --hidden-import uvicorn.protocols.http \
@@ -63,7 +63,7 @@ jobs:
         if: matrix.os == 'windows-latest'
         run: |
           python -m PyInstaller --onefile --name phone-mcp --clean --noconfirm `
-            --collect-all fastmcp --collect-all mcp --collect-all phone_mcp `
+            --collect-all fastmcp --collect-all mcp --collect-all phone_mcp --collect-all rich --collect-all lupa --collect-all fakeredis `
             --hidden-import uvicorn --hidden-import uvicorn.logging `
             --hidden-import uvicorn.loops --hidden-import uvicorn.loops.auto `
             --hidden-import uvicorn.protocols --hidden-import uvicorn.protocols.http `
@@ -79,7 +79,7 @@ jobs:
         if: matrix.os == 'macos-latest'
         run: |
           python -m PyInstaller --onefile --name phone-mcp-macos-arm64 --clean --noconfirm \
-            --collect-all fastmcp --collect-all mcp --collect-all phone_mcp \
+            --collect-all fastmcp --collect-all mcp --collect-all phone_mcp --collect-all rich --collect-all lupa --collect-all fakeredis \
             --hidden-import uvicorn --hidden-import uvicorn.logging \
             --hidden-import uvicorn.loops --hidden-import uvicorn.loops.auto \
             --hidden-import uvicorn.protocols --hidden-import uvicorn.protocols.http \
