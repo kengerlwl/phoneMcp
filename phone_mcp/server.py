@@ -20,6 +20,7 @@ from typing import Any, Dict, Optional
 from PIL import Image as PILImage
 from fastmcp import FastMCP
 from fastmcp.utilities.types import Image as MCPImage
+
 from phone_mcp.adb import (
     ADBConnection,
     list_devices as adb_list_devices,
@@ -41,7 +42,6 @@ from phone_mcp.adb import (
     find_element_by_index as adb_find_element_by_index,
     format_elements_for_llm,
 )
-from phone_mcp.config.apps import APP_PACKAGES
 
 # Global cache for UI elements
 _ui_elements_cache: dict = {"elements": [], "timestamp": 0}
@@ -121,24 +121,6 @@ def disconnect_device(address: Optional[str] = None) -> Dict[str, Any]:
             "status": "success" if success else "error",
             "message": message
         }
-    except Exception as e:
-        return {"status": "error", "error": str(e)}
-
-
-@mcp.tool()
-def get_device_ip(device_id: Optional[str] = None) -> Dict[str, Any]:
-    """
-    获取已连接设备的 IP 地址。
-    Get the IP address of a connected device.
-    """
-    try:
-        conn = ADBConnection()
-        ip = conn.get_device_ip(device_id)
-
-        if ip:
-            return {"status": "success", "ip": ip, "device_id": device_id}
-        else:
-            return {"status": "error", "error": "Could not determine device IP"}
     except Exception as e:
         return {"status": "error", "error": str(e)}
 
@@ -266,19 +248,29 @@ def swipe(
 
 
 @mcp.tool()
-def type_text(text: str, device_id: Optional[str] = None) -> Dict[str, Any]:
+def type_text(
+    text: str,
+    device_id: Optional[str] = None,
+    clear_first: bool = True
+) -> Dict[str, Any]:
     """
     在当前聚焦的输入框中输入文本。
     Type text into the currently focused input field.
+
+    Args:
+        text: 要输入的文本
+        device_id: 设备 ID
+        clear_first: 是否先清空输入框（默认 True）
 
     注意：需要设备已安装 ADB Keyboard。
     """
     try:
         detect_and_set_adb_keyboard(device_id)
-        adb_clear_text(device_id)
+        if clear_first:
+            adb_clear_text(device_id)
         adb_type_text(text, device_id)
 
-        return {"status": "success", "action": "type_text", "text": text}
+        return {"status": "success", "action": "type_text", "text": text, "cleared": clear_first}
     except Exception as e:
         return {"status": "error", "error": str(e)}
 
@@ -327,28 +319,86 @@ def press_home(device_id: Optional[str] = None, delay: float = 1.0) -> Dict[str,
         return {"status": "error", "error": str(e)}
 
 
+@mcp.tool()
+def press_key(key: str, device_id: Optional[str] = None, delay: float = 0.5) -> Dict[str, Any]:
+    """
+    发送按键事件。
+    Send a key event to the device.
+
+    Args:
+        key: 按键名称或键码。常用按键:
+            - enter: 回车键
+            - tab: Tab键
+            - delete: 删除键
+            - volume_up: 音量+
+            - volume_down: 音量-
+            - power: 电源键
+            - camera: 相机键
+            - menu: 菜单键
+            - search: 搜索键
+            - media_play_pause: 播放/暂停
+            - media_next: 下一曲
+            - media_previous: 上一曲
+            - 或任意 KEYCODE_* 键码 (如 66 代表 Enter)
+        device_id: 设备 ID
+        delay: 按键后的延迟（秒）
+    """
+    try:
+        from phone_mcp.adb.device import press_key as adb_press_key
+        adb_press_key(key, device_id, delay)
+        return {"status": "success", "action": "press_key", "key": key}
+    except Exception as e:
+        return {"status": "error", "error": str(e)}
+
+
 # ============================================================================
 # App Control Tools
 # ============================================================================
 
 
 @mcp.tool()
-def launch_app(app_name: str, device_id: Optional[str] = None, delay: float = 1.0) -> Dict[str, Any]:
+def launch_app(
+    app_name: Optional[str] = None,
+    package_name: Optional[str] = None,
+    device_id: Optional[str] = None,
+    delay: float = 1.0
+) -> Dict[str, Any]:
     """
     启动指定应用。
-    Launch an app by name.
+    Launch an app by name or package name.
 
-    支持的应用可通过 list_supported_apps 查看。
+    Args:
+        app_name: 应用名称（如"微信"、"Chrome"），支持常见应用
+        package_name: 应用包名（如"com.tencent.mm"），支持任意应用
+        device_id: 设备 ID
+        delay: 启动后的等待时间（秒）
+
+    提示：可以用 search_apps 搜索应用包名
     """
     try:
-        success = adb_launch_app(app_name, device_id, delay)
+        if not app_name and not package_name:
+            return {
+                "status": "error",
+                "error": "Must provide either app_name or package_name"
+            }
 
+        # 优先使用包名
+        if package_name:
+            from phone_mcp.adb.device import launch_app_by_package
+            success = launch_app_by_package(package_name, device_id, delay)
+            if success:
+                return {"status": "success", "action": "launch_app", "package_name": package_name}
+            else:
+                return {"status": "error", "error": f"Failed to launch app: {package_name}"}
+
+        # 使用应用名称
+        success = adb_launch_app(app_name, device_id, delay)
         if success:
             return {"status": "success", "action": "launch_app", "app_name": app_name}
         else:
             return {
                 "status": "error",
-                "error": f"App not found: {app_name}. Use list_supported_apps to see available apps."
+                "error": f"App not found: {app_name}. Use search_apps to find the package name."
             }
     except Exception as e:
         return {"status": "error", "error": str(e)}
@@ -368,17 +418,26 @@ def get_current_app(device_id: Optional[str] = None) -> Dict[str, Any]:
 
 
 @mcp.tool()
-def list_supported_apps() -> Dict[str, Any]:
+def search_apps(keyword: str, device_id: Optional[str] = None) -> Dict[str, Any]:
     """
-    列出所有支持的应用。
-    List all supported apps that can be launched.
+    搜索设备上已安装的应用。
+    Search for installed apps on the device.
+
+    Args:
+        keyword: 搜索关键词（包名或应用名的一部分）
+
+    Returns:
+        匹配的应用包名列表
     """
     try:
-        apps = []
-        for app_name, package in APP_PACKAGES.items():
-            apps.append({"name": app_name, "package": package})
-
-        return {"status": "success", "apps": apps, "count": len(apps)}
+        from phone_mcp.adb.device import search_installed_apps
+        apps = search_installed_apps(keyword, device_id)
+        return {
+            "status": "success",
+            "apps": apps,
+            "count": len(apps),
+            "hint": "Use launch_app(package_name='...') to launch an app by package name"
+        }
     except Exception as e:
         return {"status": "error", "error": str(e)}
 
@@ -562,7 +621,6 @@ def run(transport: str = "sse", host: str = "0.0.0.0", port: int = 8009, path: s
     print("  - list_devices          列出已连接设备")
     print("  - connect_device        连接远程设备")
     print("  - disconnect_device     断开设备连接")
-    print("  - get_device_ip         获取设备 IP")
     print("  - get_screenshot        获取屏幕截图")
     print("  - get_ui_elements       获取UI元素列表 ⭐推荐")
     print("  - tap_element           通过元素点击 ⭐推荐")
@@ -574,9 +632,10 @@ def run(transport: str = "sse", host: str = "0.0.0.0", port: int = 8009, path: s
     print("  - clear_text            清除文本")
     print("  - press_back            按返回键")
     print("  - press_home            按主页键")
+    print("  - press_key             发送按键事件")
     print("  - launch_app            启动应用")
     print("  - get_current_app       获取当前应用")
-    print("  - list_supported_apps   列出支持的应用")
+    print("  - search_apps           搜索已安装应用")
     print("  - wait                  等待")
     print("=" * 60)
     print("\n🎯 Starting server...\n")
