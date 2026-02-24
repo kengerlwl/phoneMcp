@@ -44,7 +44,7 @@ from phone_mcp.adb import (
 )
 
 # Global cache for UI elements
-_ui_elements_cache: dict = {"elements": [], "timestamp": 0}
+_ui_elements_cache: dict = {"elements": [], "timestamp": 0, "mode": "xml"}
 
 # Create MCP Server instance
 mcp = FastMCP("PhoneMCP")
@@ -131,16 +131,46 @@ def disconnect_device(address: Optional[str] = None) -> Dict[str, Any]:
 
 
 @mcp.tool()
-def get_screenshot(device_id: Optional[str] = None) -> MCPImage:
+def get_screenshot(
+    device_id: Optional[str] = None,
+    annotated: bool = False,
+) -> MCPImage:
     """
     获取设备屏幕截图。
     Get device screenshot.
 
     左上角是（0, 0），x轴是往右递增，y轴是往下递增。
+
+    Args:
+        device_id: 设备 ID
+        annotated: 是否在截图上标注 UI 元素索引。
+            设为 True 时，会先获取 UI 元素列表（使用缓存中的 mode），
+            然后在截图上用红色方框和数字索引标注每个元素。
+            标注后的截图可以配合 tap_element(index=N) 精准点击。
     """
     screenshot = adb_get_screenshot(device_id)
 
     image_bytes = base64.b64decode(screenshot.base64_data)
+
+    if annotated:
+        # Use cached elements if fresh, otherwise fetch new ones
+        global _ui_elements_cache
+        cache_age = time.time() - _ui_elements_cache.get("timestamp", 0)
+        elements = _ui_elements_cache.get("elements", [])
+        cached_mode = _ui_elements_cache.get("mode", "xml")
+
+        if cache_age > 30 or not elements:
+            elements = adb_get_ui_elements(device_id, clickable_only=False, mode=cached_mode)
+            _ui_elements_cache = {
+                "elements": elements,
+                "timestamp": time.time(),
+                "mode": cached_mode,
+            }
+
+        from phone_mcp.adb.ocr import draw_annotated_screenshot
+        img_bytes = draw_annotated_screenshot(image_bytes, elements)
+        return MCPImage(data=img_bytes, format="jpeg")
+
     img = PILImage.open(io.BytesIO(image_bytes))
 
     # Convert RGBA to RGB (JPEG doesn't support transparency)
@@ -451,6 +481,7 @@ def search_apps(keyword: str, device_id: Optional[str] = None) -> Dict[str, Any]
 def get_ui_elements(
     device_id: Optional[str] = None,
     clickable_only: bool = False,
+    mode: str = "xml",
 ) -> Dict[str, Any]:
     """
     获取当前屏幕上的所有 UI 元素列表。
@@ -458,15 +489,30 @@ def get_ui_elements(
 
     这是推荐的交互方式：先获取元素列表，然后使用 tap_element 通过索引或文本点击。
     比直接使用坐标点击更准确可靠。
+
+    Args:
+        device_id: 设备 ID
+        clickable_only: 是否只返回可点击元素（仅 xml 模式有效）
+        mode: 元素检测模式，可选值：
+            - "xml": 默认模式，使用 uiautomator XML dump，速度快、信息丰富（推荐优先使用）
+            - "ocr": OCR 模式，通过截图文字识别检测元素，适用于 WebView、游戏、Flutter 等
+              uiautomator 无法获取元素的场景
+            - "auto": 自动模式，先尝试 xml，如果失败或返回元素过少则自动切换到 ocr
+
+    提示：
+        - 大多数原生 App 使用默认的 "xml" 模式即可
+        - 如果发现返回的元素很少或不准确，切换到 "ocr" 或 "auto" 模式
+        - OCR 模式需要安装 paddleocr：pip install paddleocr paddlepaddle
     """
     global _ui_elements_cache
 
     try:
-        elements = adb_get_ui_elements(device_id, clickable_only)
+        elements = adb_get_ui_elements(device_id, clickable_only, mode=mode)
 
         _ui_elements_cache = {
             "elements": elements,
-            "timestamp": time.time()
+            "timestamp": time.time(),
+            "mode": mode,
         }
 
         element_list = []
@@ -486,6 +532,7 @@ def get_ui_elements(
 
         return {
             "status": "success",
+            "mode": mode,
             "elements": element_list,
             "count": len(element_list),
             "formatted": formatted,
@@ -516,12 +563,14 @@ def tap_element(
     try:
         cache_age = time.time() - _ui_elements_cache.get("timestamp", 0)
         elements = _ui_elements_cache.get("elements", [])
+        cached_mode = _ui_elements_cache.get("mode", "xml")
 
         if refresh or cache_age > 30 or not elements:
-            elements = adb_get_ui_elements(device_id, clickable_only=False)
+            elements = adb_get_ui_elements(device_id, clickable_only=False, mode=cached_mode)
             _ui_elements_cache = {
                 "elements": elements,
-                "timestamp": time.time()
+                "timestamp": time.time(),
+                "mode": cached_mode,
             }
 
         element = None
@@ -544,10 +593,11 @@ def tap_element(
 
         if element is None:
             if not refresh:
-                elements = adb_get_ui_elements(device_id, clickable_only=False)
+                elements = adb_get_ui_elements(device_id, clickable_only=False, mode=cached_mode)
                 _ui_elements_cache = {
                     "elements": elements,
-                    "timestamp": time.time()
+                    "timestamp": time.time(),
+                    "mode": cached_mode,
                 }
 
                 if index is not None:
@@ -567,7 +617,7 @@ def tap_element(
         x, y = element.center
         adb_tap(x, y, device_id, delay)
 
-        _ui_elements_cache = {"elements": [], "timestamp": 0}
+        _ui_elements_cache = {"elements": [], "timestamp": 0, "mode": "xml"}
 
         return {
             "status": "success",

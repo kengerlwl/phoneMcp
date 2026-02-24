@@ -30,6 +30,10 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
+ocr = [
+    "paddleocr>=2.7.0",
+    "paddlepaddle>=2.5.0",
+]
 dev = [
     "pytest>=7.0.0",
     "black>=23.0.0",

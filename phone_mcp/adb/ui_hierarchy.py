@@ -140,14 +140,71 @@ def parse_ui_elements(
     return elements
 
 
+# Minimum number of elements to consider XML dump "useful".
+# If fewer elements are returned, we treat it as a poor dump.
+_XML_MIN_ELEMENTS = 2
+
+
 def get_ui_elements(
     device_id: str | None = None,
     clickable_only: bool = True,
     timeout: int = 10,
+    mode: str = "xml",
 ) -> List[UIElement]:
-    """Get all UI elements from the current screen."""
+    """Get all UI elements from the current screen.
+
+    Args:
+        device_id: Optional ADB device ID.
+        clickable_only: If True, return only clickable elements (xml mode).
+        timeout: Timeout in seconds.
+        mode: Detection mode.
+            - "xml": Use uiautomator XML dump (default, fast & structured).
+            - "ocr": Use OCR to detect text on screen (works on any app).
+            - "auto": Try XML first, fallback to OCR if XML fails or
+              returns too few elements.
+
+    Returns:
+        List of UIElement objects.
+    """
+    if mode == "ocr":
+        return _get_elements_via_ocr(device_id, timeout)
+
+    if mode == "xml":
+        return _get_elements_via_xml(device_id, clickable_only, timeout)
+
+    # mode == "auto": try XML first, fallback to OCR
+    try:
+        elements = _get_elements_via_xml(device_id, clickable_only, timeout)
+        if len(elements) >= _XML_MIN_ELEMENTS:
+            return elements
+    except Exception:
+        pass
+
+    # XML failed or returned too few elements — fallback to OCR
+    try:
+        return _get_elements_via_ocr(device_id, timeout)
+    except Exception:
+        # If OCR also fails, return whatever XML gave us (possibly empty)
+        return _get_elements_via_xml(device_id, clickable_only, timeout)
+
+
+def _get_elements_via_xml(
+    device_id: str | None,
+    clickable_only: bool,
+    timeout: int,
+) -> List[UIElement]:
+    """Internal: get elements via uiautomator XML dump."""
     xml_content = get_ui_hierarchy_xml(device_id, timeout)
     return parse_ui_elements(xml_content, clickable_only)
+
+
+def _get_elements_via_ocr(
+    device_id: str | None,
+    timeout: int,
+) -> List[UIElement]:
+    """Internal: get elements via OCR."""
+    from phone_mcp.adb.ocr import ocr_get_ui_elements
+    return ocr_get_ui_elements(device_id=device_id, timeout=timeout)
 
 
 def find_element_by_text(

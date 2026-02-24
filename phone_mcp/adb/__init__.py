@@ -23,6 +23,9 @@ from phone_mcp.adb.input import (
     restore_keyboard,
     type_text,
 )
+# OCR module uses lazy imports internally (paddleocr is optional).
+# Import only the non-paddleocr-dependent helpers at top level.
+from phone_mcp.adb.ocr import draw_annotated_screenshot
 from phone_mcp.adb.screenshot import Screenshot, get_screenshot
 from phone_mcp.adb.ui_hierarchy import (
     UIElement,
@@ -66,5 +69,7 @@ __all__ = [
     "find_element_by_resource_id",
     "find_element_by_index",
     "format_elements_for_llm",
+    # OCR (draw_annotated_screenshot; ocr_get_ui_elements is lazy-imported in ui_hierarchy)
+    "draw_annotated_screenshot",
 ]
 
