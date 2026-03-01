@@ -1,5 +1,6 @@
 """ADB utilities for Android device interaction."""
 
+from phone_mcp.adb.adb_binary import get_adb_path, init_adb
 from phone_mcp.adb.connection import (
     ADBConnection,
     ConnectionType,
@@ -36,6 +37,9 @@ from phone_mcp.adb.ui_hierarchy import (
 )
 
 __all__ = [
+    # ADB binary
+    "get_adb_path",
+    "init_adb",
     # Connection
     "ADBConnection",
     "ConnectionType",

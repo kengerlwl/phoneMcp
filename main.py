@@ -151,6 +151,15 @@ def main():
     print("=" * 62)
 
     try:
+        # 初始化 ADB（检测系统 ADB 或解压内嵌 ADB）
+        from phone_mcp.adb.adb_binary import init_adb
+        try:
+            adb_path = init_adb()
+            print(f"\n  ✅ ADB 路径: {adb_path}")
+        except FileNotFoundError as e:
+            print(f"\n  ⚠️  {e}")
+            print("  程序将继续启动，但设备操作可能会失败。")
+
         from phone_mcp.server import run
         run(
             transport=args.transport,

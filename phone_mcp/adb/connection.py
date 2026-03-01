@@ -5,6 +5,7 @@ import time
 from dataclasses import dataclass
 from enum import Enum
 
+from phone_mcp.adb.adb_binary import get_adb_path
 from phone_mcp.config.timing import TIMING_CONFIG
 
 
@@ -31,9 +32,9 @@ class ADBConnection:
     Supports USB, WiFi, and remote TCP/IP connections.
     """
 
-    def __init__(self, adb_path: str = "adb"):
+    def __init__(self, adb_path: str | None = None):
         """Initialize ADB connection manager."""
-        self.adb_path = adb_path
+        self.adb_path = adb_path or get_adb_path()
 
     def connect(self, address: str, timeout: int = 10) -> tuple[bool, str]:
         """

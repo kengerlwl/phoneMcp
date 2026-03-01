@@ -4,6 +4,8 @@ import base64
 import subprocess
 import time
 
+from phone_mcp.adb.adb_binary import get_adb_path
+
 
 def type_text(text: str, device_id: str | None = None) -> None:
     """
@@ -100,7 +102,8 @@ def _escape_for_input_text(text: str) -> str:
 
 def _get_adb_prefix(device_id: str | None) -> list:
     """Get ADB command prefix with optional device specifier."""
+    adb = get_adb_path()
     if device_id:
-        return ["adb", "-s", device_id]
-    return ["adb"]
+        return [adb, "-s", device_id]
+    return [adb]
 

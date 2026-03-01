@@ -10,6 +10,8 @@ from io import BytesIO
 
 from PIL import Image
 
+from phone_mcp.adb.adb_binary import get_adb_path
+
 
 @dataclass
 class Screenshot:
@@ -76,9 +78,10 @@ def get_screenshot(device_id: str | None = None, timeout: int = 10) -> Screensho
 
 def _get_adb_prefix(device_id: str | None) -> list:
     """Get ADB command prefix with optional device specifier."""
+    adb = get_adb_path()
     if device_id:
-        return ["adb", "-s", device_id]
-    return ["adb"]
+        return [adb, "-s", device_id]
+    return [adb]
 
 
 def _create_fallback_screenshot(is_sensitive: bool) -> Screenshot:

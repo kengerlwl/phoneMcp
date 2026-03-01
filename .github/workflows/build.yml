@@ -19,12 +19,15 @@ jobs:
           - os: ubuntu-latest
             artifact_name: phone-mcp-linux-amd64
             asset_name: phone-mcp-linux-amd64
+            adb_url: https://dl.google.com/android/repository/platform-tools-latest-linux.zip
           - os: windows-latest
             artifact_name: phone-mcp.exe
             asset_name: phone-mcp-windows-amd64.exe
+            adb_url: https://dl.google.com/android/repository/platform-tools-latest-windows.zip
           - os: macos-latest
             artifact_name: phone-mcp-macos-arm64
             asset_name: phone-mcp-macos-arm64
+            adb_url: https://dl.google.com/android/repository/platform-tools-latest-darwin.zip
 
     runs-on: ${{ matrix.os }}
 
@@ -43,12 +46,21 @@ jobs:
           pip install -r requirements.txt
           pip install pyinstaller typer
 
+      - name: Download ADB platform-tools
+        shell: bash
+        run: |
+          curl -L -o platform-tools.zip "${{ matrix.adb_url }}"
+          unzip -q platform-tools.zip
+          echo "[CI] Downloaded ADB platform-tools:"
+          ls -la platform-tools/
+
       - name: Build executable (Linux)
         if: matrix.os == 'ubuntu-latest'
         run: |
           python -m PyInstaller --onefile --name phone-mcp-linux-amd64 --clean --noconfirm \
             --collect-all fastmcp --collect-all mcp --collect-all phone_mcp --collect-all rich --collect-all lupa --collect-all fakeredis \
             --exclude-module mcp.cli --exclude-module typer \
+            --add-data "platform-tools:platform-tools" \
             --hidden-import uvicorn --hidden-import uvicorn.logging \
             --hidden-import uvicorn.loops --hidden-import uvicorn.loops.auto \
             --hidden-import uvicorn.protocols --hidden-import uvicorn.protocols.http \
@@ -66,6 +78,7 @@ jobs:
           python -m PyInstaller --onefile --name phone-mcp --clean --noconfirm `
             --collect-all fastmcp --collect-all mcp --collect-all phone_mcp --collect-all rich --collect-all lupa --collect-all fakeredis `
             --exclude-module mcp.cli --exclude-module typer `
+            --add-data "platform-tools;platform-tools" `
             --hidden-import uvicorn --hidden-import uvicorn.logging `
             --hidden-import uvicorn.loops --hidden-import uvicorn.loops.auto `
             --hidden-import uvicorn.protocols --hidden-import uvicorn.protocols.http `
@@ -83,6 +96,7 @@ jobs:
           python -m PyInstaller --onefile --name phone-mcp-macos-arm64 --clean --noconfirm \
             --collect-all fastmcp --collect-all mcp --collect-all phone_mcp --collect-all rich --collect-all lupa --collect-all fakeredis \
             --exclude-module mcp.cli --exclude-module typer \
+            --add-data "platform-tools:platform-tools" \
             --hidden-import uvicorn --hidden-import uvicorn.logging \
             --hidden-import uvicorn.loops --hidden-import uvicorn.loops.auto \
             --hidden-import uvicorn.protocols --hidden-import uvicorn.protocols.http \
@@ -139,13 +153,17 @@ jobs:
 
             Android 设备控制 MCP Server - 通过 ADB 远程控制 Android 设备
 
+            ### 🎉 开箱即用
+
+            本版本**内嵌了 ADB**，无需预先安装 ADB 即可直接使用！
+
             ### 下载
             - **Linux**: `phone-mcp-linux-amd64`
             - **Windows**: `phone-mcp-windows-amd64.exe`
             - **macOS (Apple Silicon)**: `phone-mcp-macos-arm64`
 
             ### 前置要求
-            - 安装 ADB 并添加到 PATH
+            - ~~安装 ADB 并添加到 PATH~~（已内嵌，无需安装）
             - Android 设备已连接（USB 或 WiFi）
             - 设备已开启 USB 调试
 

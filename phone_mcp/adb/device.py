@@ -3,6 +3,7 @@
 import subprocess
 import time
 
+from phone_mcp.adb.adb_binary import get_adb_path
 from phone_mcp.config.apps import APP_PACKAGES
 from phone_mcp.config.timing import TIMING_CONFIG
 
@@ -412,7 +413,8 @@ def press_key(key: str, device_id: str | None = None, delay: float = 0.5) -> Non
 
 def _get_adb_prefix(device_id: str | None) -> list:
     """Get ADB command prefix with optional device specifier."""
+    adb = get_adb_path()
     if device_id:
-        return ["adb", "-s", device_id]
-    return ["adb"]
+        return [adb, "-s", device_id]
+    return [adb]
 

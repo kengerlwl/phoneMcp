@@ -18,6 +18,7 @@ from pathlib import Path
 PROJECT_ROOT = Path(__file__).parent
 DIST_DIR = PROJECT_ROOT / "dist"
 BUILD_DIR = PROJECT_ROOT / "build"
+ADB_DIR = PROJECT_ROOT / "platform-tools"
 
 
 def get_output_name() -> str:
@@ -47,6 +48,15 @@ def build():
     print(f"[Build] 目标平台: {platform.system()} {platform.machine()}")
     print(f"[Build] 输出文件: {output_name}")
 
+    # 构建 --add-data 参数：如果存在 platform-tools 目录则打包 ADB
+    add_data_args = []
+    if ADB_DIR.exists():
+        sep = ";" if platform.system() == "Windows" else ":"
+        add_data_args = ["--add-data", f"{ADB_DIR}{sep}platform-tools"]
+        print(f"[Build] 包含 ADB: {ADB_DIR}")
+    else:
+        print("[Build] ⚠️  未找到 platform-tools 目录，跳过 ADB 内嵌")
+
     # PyInstaller 参数
     cmd = [
         sys.executable, "-m", "PyInstaller",
@@ -61,6 +71,7 @@ def build():
         "--collect-all", "rich",  # 包含 _unicode_data
         "--collect-all", "lupa",  # fakeredis 需要的 Lua 运行时
         "--collect-all", "fakeredis",  # 包含 commands.json 等数据文件
+        *add_data_args,
         # Hidden imports
         "--hidden-import", "uvicorn",
         "--hidden-import", "uvicorn.logging",
@@ -119,40 +130,12 @@ PyInstaller 不支持交叉编译，需要在目标平台上分别打包：
 3. Linux (在 Linux 机器上执行):
    python build.py
 
-=== 使用 Docker 打包 Linux 版本 ===
-
-# 在任意平台上打包 Linux 版本
-docker run --rm -v $(pwd):/app python:3.11 bash -c "
-    cd /app &&
-    pip install -r requirements.txt pyinstaller &&
-    python build.py
-"
-
 === 使用 GitHub Actions 自动打包 ===
 
-推荐使用 CI/CD 在多平台上自动打包，创建 .github/workflows/build.yml:
+推荐使用 CI/CD 在多平台上自动打包（已配置），推送 tag 即可触发：
 
-name: Build
-on:
-  push:
-    tags: ['v*']
-jobs:
-  build:
-    strategy:
-      matrix:
-        os: [ubuntu-latest, windows-latest, macos-latest]
-    runs-on: ${{ matrix.os }}
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
-        with:
-          python-version: '3.11'
-      - run: pip install -r requirements.txt pyinstaller
-      - run: python build.py
-      - uses: actions/upload-artifact@v4
-        with:
-          name: phone-mcp-${{ matrix.os }}
-          path: dist/
+  git tag v1.0.0
+  git push origin v1.0.0
 """)
 
 

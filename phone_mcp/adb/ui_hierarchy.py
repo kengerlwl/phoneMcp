@@ -12,6 +12,8 @@ import xml.etree.ElementTree as ET
 from dataclasses import dataclass
 from typing import List, Optional, Tuple
 
+from phone_mcp.adb.adb_binary import get_adb_path
+
 
 @dataclass
 class UIElement:
@@ -312,7 +314,8 @@ def _parse_bounds(bounds_str: str) -> Tuple[int, int, int, int]:
 
 def _get_adb_prefix(device_id: str | None) -> list:
     """Get ADB command prefix with optional device specifier."""
+    adb = get_adb_path()
     if device_id:
-        return ["adb", "-s", device_id]
-    return ["adb"]
+        return [adb, "-s", device_id]
+    return [adb]
 
