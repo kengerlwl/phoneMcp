@@ -26,7 +26,6 @@ from phone_mcp.adb import (
     list_devices as adb_list_devices,
     get_screenshot as adb_get_screenshot,
     tap as adb_tap,
-    double_tap as adb_double_tap,
     long_press as adb_long_press,
     swipe as adb_swipe,
     back as adb_back,
@@ -35,7 +34,6 @@ from phone_mcp.adb import (
     get_current_app as adb_get_current_app,
     type_text as adb_type_text,
     clear_text as adb_clear_text,
-    detect_and_set_adb_keyboard,
     get_ui_elements as adb_get_ui_elements,
     find_element_by_text as adb_find_element_by_text,
     find_element_by_resource_id as adb_find_element_by_resource_id,
@@ -195,32 +193,6 @@ def get_screenshot(
 
 
 @mcp.tool()
-def tap(x: int, y: int, device_id: Optional[str] = None, delay: float = 1.0) -> Dict[str, Any]:
-    """
-    在屏幕指定坐标点击。
-    Tap at the specified coordinates on the screen.
-    """
-    try:
-        adb_tap(x, y, device_id, delay)
-        return {"status": "success", "action": "tap", "x": x, "y": y}
-    except Exception as e:
-        return {"status": "error", "error": str(e)}
-
-
-@mcp.tool()
-def double_tap(x: int, y: int, device_id: Optional[str] = None, delay: float = 1.0) -> Dict[str, Any]:
-    """
-    在屏幕指定坐标双击。
-    Double tap at the specified coordinates on the screen.
-    """
-    try:
-        adb_double_tap(x, y, device_id, delay)
-        return {"status": "success", "action": "double_tap", "x": x, "y": y}
-    except Exception as e:
-        return {"status": "error", "error": str(e)}
-
-
-@mcp.tool()
 def long_press(
     x: int,
     y: int,
@@ -284,18 +256,17 @@ def type_text(
     clear_first: bool = True
 ) -> Dict[str, Any]:
     """
-    在当前聚焦的输入框中输入文本。
-    Type text into the currently focused input field.
+    在当前聚焦的输入框中输入文本（使用 ADB 原生指令）。
+    Type text into the currently focused input field using native ADB commands.
+
+    ASCII 文本使用 `adb shell input text`，中文等非 ASCII 文本通过剪贴板粘贴。
 
     Args:
-        text: 要输入的文本
+        text: 要输入的文本（支持中文、emoji 等）
         device_id: 设备 ID
         clear_first: 是否先清空输入框（默认 True）
-
-    注意：需要设备已安装 ADB Keyboard。
     """
     try:
-        detect_and_set_adb_keyboard(device_id)
         if clear_first:
             adb_clear_text(device_id)
         adb_type_text(text, device_id)
@@ -674,8 +645,6 @@ def run(transport: str = "sse", host: str = "0.0.0.0", port: int = 8009, path: s
     print("  - get_screenshot        获取屏幕截图")
     print("  - get_ui_elements       获取UI元素列表 ⭐推荐")
     print("  - tap_element           通过元素点击 ⭐推荐")
-    print("  - tap                   坐标点击屏幕")
-    print("  - double_tap            双击屏幕")
     print("  - long_press            长按屏幕")
     print("  - swipe                 滑动屏幕")
     print("  - type_text             输入文本")

@@ -1,88 +1,101 @@
-"""Input utilities for Android device text input."""
+"""Input utilities for Android device text input using native ADB commands."""
 
 import base64
 import subprocess
+import time
 
 
 def type_text(text: str, device_id: str | None = None) -> None:
     """
-    Type text into the currently focused input field using ADB Keyboard.
+    Type text into the currently focused input field.
+
+    For ASCII text, uses `adb shell input text` (native, no extra app needed).
+    For non-ASCII text (e.g. Chinese), uses ADB Keyboard's ADB_INPUT_B64 broadcast.
 
     Args:
         text: The text to type.
         device_id: Optional ADB device ID for multi-device setups.
-
-    Note:
-        Requires ADB Keyboard to be installed on the device.
-        See: https://github.com/nicnocquee/AdbKeyboard
     """
-    adb_prefix = _get_adb_prefix(device_id)
-    encoded_text = base64.b64encode(text.encode("utf-8")).decode("utf-8")
+    if not text:
+        return
 
-    subprocess.run(
-        adb_prefix
-        + [
-            "shell",
-            "am",
-            "broadcast",
-            "-a",
-            "ADB_INPUT_B64",
-            "--es",
-            "msg",
-            encoded_text,
-        ],
-        capture_output=True,
-        text=True,
-    )
-
-
-def clear_text(device_id: str | None = None) -> None:
-    """Clear text in the currently focused input field."""
     adb_prefix = _get_adb_prefix(device_id)
 
-    subprocess.run(
-        adb_prefix + ["shell", "am", "broadcast", "-a", "ADB_CLEAR_TEXT"],
-        capture_output=True,
-        text=True,
-    )
-
-
-def detect_and_set_adb_keyboard(device_id: str | None = None) -> str:
-    """
-    Detect current keyboard and switch to ADB Keyboard if needed.
-
-    Returns:
-        The original keyboard IME identifier for later restoration.
-    """
-    adb_prefix = _get_adb_prefix(device_id)
-
-    result = subprocess.run(
-        adb_prefix + ["shell", "settings", "get", "secure", "default_input_method"],
-        capture_output=True,
-        text=True,
-    )
-    current_ime = (result.stdout + result.stderr).strip()
-
-    if "com.android.adbkeyboard/.AdbIME" not in current_ime:
+    # Check if text is pure ASCII
+    if all(ord(c) < 128 for c in text):
+        # Escape special shell characters for `input text`
+        escaped = _escape_for_input_text(text)
         subprocess.run(
-            adb_prefix + ["shell", "ime", "set", "com.android.adbkeyboard/.AdbIME"],
+            adb_prefix + ["shell", "input", "text", escaped],
+            capture_output=True,
+            text=True,
+        )
+    else:
+        # Non-ASCII (Chinese, emoji, etc.): use ADB Keyboard broadcast
+        encoded_text = base64.b64encode(text.encode("utf-8")).decode("utf-8")
+        subprocess.run(
+            adb_prefix
+            + [
+                "shell",
+                "am",
+                "broadcast",
+                "-a",
+                "ADB_INPUT_B64",
+                "--es",
+                "msg",
+                encoded_text,
+            ],
             capture_output=True,
             text=True,
         )
 
-    # Warm up the keyboard
-    type_text("", device_id)
 
-    return current_ime
+def clear_text(device_id: str | None = None) -> None:
+    """
+    Clear text in the currently focused input field using native ADB commands.
 
-
-def restore_keyboard(ime: str, device_id: str | None = None) -> None:
-    """Restore the original keyboard IME."""
+    Uses Ctrl+A (select all) then DEL (delete) to clear the field.
+    """
     adb_prefix = _get_adb_prefix(device_id)
 
+    # Move cursor to end first
     subprocess.run(
-        adb_prefix + ["shell", "ime", "set", ime], capture_output=True, text=True
+        adb_prefix + ["shell", "input", "keyevent", "--longpress", "KEYCODE_MOVE_END"],
+        capture_output=True,
+        text=True,
     )
+    time.sleep(0.1)
+
+    # Ctrl+A to select all text
+    subprocess.run(
+        adb_prefix + ["shell", "input", "keycombination", "113", "29"],  # CTRL + A
+        capture_output=True,
+        text=True,
+    )
+    time.sleep(0.1)
+
+    # Delete selected text
+    subprocess.run(
+        adb_prefix + ["shell", "input", "keyevent", "KEYCODE_DEL"],
+        capture_output=True,
+        text=True,
+    )
+
+
+def _escape_for_input_text(text: str) -> str:
+    """
+    Escape special characters for `adb shell input text`.
+
+    The `input text` command interprets certain characters specially.
+    Spaces must be replaced with %s, and shell metacharacters must be escaped.
+    """
+    # Replace space with %s (adb input text convention)
+    result = text.replace(" ", "%s")
+    # Escape shell special characters
+    special_chars = "&<>'\"(){}|;\\`$!~"
+    for char in special_chars:
+        result = result.replace(char, f"\\{char}")
+    return result
 
 
 def _get_adb_prefix(device_id: str | None) -> list:

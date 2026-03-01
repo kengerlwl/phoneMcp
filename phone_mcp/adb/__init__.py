@@ -19,8 +19,6 @@ from phone_mcp.adb.device import (
 )
 from phone_mcp.adb.input import (
     clear_text,
-    detect_and_set_adb_keyboard,
-    restore_keyboard,
     type_text,
 )
 # OCR module uses lazy imports internally (paddleocr is optional).
@@ -56,8 +54,6 @@ __all__ = [
     # Input
     "type_text",
     "clear_text",
-    "detect_and_set_adb_keyboard",
-    "restore_keyboard",
     # Screenshot
     "Screenshot",
     "get_screenshot",
