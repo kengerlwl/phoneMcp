@@ -64,19 +64,45 @@ class UIElement:
         return f"[{self.index}] {label} @ {self.center}"
 
 
-def get_ui_hierarchy_xml(device_id: str | None = None, timeout: int = 10) -> str:
-    """Dump UI hierarchy XML from the device."""
-    adb_prefix = _get_adb_prefix(device_id)
+def get_ui_hierarchy_xml(device_id: str | None = None, timeout: int = 15) -> str:
+    """Dump UI hierarchy XML from the device.
 
-    subprocess.run(
-        adb_prefix + ["shell", "uiautomator", "dump", "/sdcard/ui_dump.xml"],
+    Tries the standard ``uiautomator dump`` first.  If it fails with the
+    well-known *"could not get idle state"* error (common on screens with
+    animations, video playback, or live content such as Bilibili danmaku),
+    it retries with the ``--window-animation-disabled`` flag which skips
+    waiting for the window to become idle.
+    """
+    adb_prefix = _get_adb_prefix(device_id)
+    dump_path = "/sdcard/ui_dump.xml"
+
+    # --- attempt 1: standard dump ----------------------------------------
+    dump_result = subprocess.run(
+        adb_prefix + ["shell", "uiautomator", "dump", dump_path],
         capture_output=True,
         text=True,
         timeout=timeout,
     )
 
+    dump_output = (dump_result.stdout + dump_result.stderr).strip()
+
+    # --- attempt 2: fallback with --window-animation-disabled ------------
+    if "error" in dump_output.lower() or "could not get idle state" in dump_output.lower():
+        dump_result = subprocess.run(
+            adb_prefix
+            + ["shell", "uiautomator", "dump", "--window-animation-disabled", dump_path],
+            capture_output=True,
+            text=True,
+            timeout=timeout,
+        )
+        dump_output = (dump_result.stdout + dump_result.stderr).strip()
+        # If this also fails, raise so callers can handle it
+        if "error" in dump_output.lower():
+            raise RuntimeError(f"uiautomator dump failed: {dump_output}")
+
+    # --- read the dumped XML ---------------------------------------------
     result = subprocess.run(
-        adb_prefix + ["shell", "cat", "/sdcard/ui_dump.xml"],
+        adb_prefix + ["shell", "cat", dump_path],
         capture_output=True,
         text=True,
         timeout=5,
