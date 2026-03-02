@@ -131,7 +131,6 @@ def disconnect_device(address: Optional[str] = None) -> Dict[str, Any]:
 @mcp.tool()
 def get_screenshot(
     device_id: Optional[str] = None,
-    annotated: bool = False,
 ) -> MCPImage:
     """
     获取设备屏幕截图。
@@ -139,35 +138,15 @@ def get_screenshot(
 
     左上角是（0, 0），x轴是往右递增，y轴是往下递增。
 
+    注意：此工具仅返回截图图片，不包含 UI 元素信息。
+    如需获取屏幕上的元素列表（文本、坐标、可点击状态等），请使用 get_ui_elements 工具。
+
     Args:
         device_id: 设备 ID
-        annotated: 是否在截图上标注 UI 元素索引。
-            设为 True 时，会先获取 UI 元素列表（使用缓存中的 mode），
-            然后在截图上用红色方框和数字索引标注每个元素。
-            标注后的截图可以配合 tap_element(index=N) 精准点击。
     """
     screenshot = adb_get_screenshot(device_id)
 
     image_bytes = base64.b64decode(screenshot.base64_data)
-
-    if annotated:
-        # Use cached elements if fresh, otherwise fetch new ones
-        global _ui_elements_cache
-        cache_age = time.time() - _ui_elements_cache.get("timestamp", 0)
-        elements = _ui_elements_cache.get("elements", [])
-        cached_mode = _ui_elements_cache.get("mode", "xml")
-
-        if cache_age > 30 or not elements:
-            elements = adb_get_ui_elements(device_id, clickable_only=False, mode=cached_mode)
-            _ui_elements_cache = {
-                "elements": elements,
-                "timestamp": time.time(),
-                "mode": cached_mode,
-            }
-
-        from phone_mcp.adb.ocr import draw_annotated_screenshot
-        img_bytes = draw_annotated_screenshot(image_bytes, elements)
-        return MCPImage(data=img_bytes, format="jpeg")
 
     img = PILImage.open(io.BytesIO(image_bytes))
 
@@ -259,7 +238,8 @@ def type_text(
     在当前聚焦的输入框中输入文本（使用 ADB 原生指令）。
     Type text into the currently focused input field using native ADB commands.
 
-    ASCII 文本使用 `adb shell input text`，中文等非 ASCII 文本通过剪贴板粘贴。
+    ASCII 文本使用 `adb shell input text`，中文/emoji 等非 ASCII 文本通过
+    剪贴板粘贴方案自动输入（零 APK 依赖，首次使用自动编译部署 helper）。
 
     Args:
         text: 要输入的文本（支持中文、emoji 等）

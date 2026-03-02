@@ -176,7 +176,7 @@ _XML_MIN_ELEMENTS = 2
 def get_ui_elements(
     device_id: str | None = None,
     clickable_only: bool = True,
-    timeout: int = 10,
+    timeout: int = 15,
     mode: str = "xml",
 ) -> List[UIElement]:
     """Get all UI elements from the current screen.
