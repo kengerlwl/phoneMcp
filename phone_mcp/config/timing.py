@@ -16,7 +16,6 @@ class DeviceTimingConfig:
     default_tap_delay: float = 1.0
     default_double_tap_delay: float = 1.0
     double_tap_interval: float = 0.1
-    default_long_press_delay: float = 1.0
     default_swipe_delay: float = 1.0
     default_back_delay: float = 1.0
     default_home_delay: float = 1.0
@@ -32,9 +31,6 @@ class DeviceTimingConfig:
         )
         self.double_tap_interval = float(
             os.getenv("PHONE_MCP_DOUBLE_TAP_INTERVAL", self.double_tap_interval)
-        )
-        self.default_long_press_delay = float(
-            os.getenv("PHONE_MCP_LONG_PRESS_DELAY", self.default_long_press_delay)
         )
         self.default_swipe_delay = float(
             os.getenv("PHONE_MCP_SWIPE_DELAY", self.default_swipe_delay)

@@ -14,7 +14,6 @@ from phone_mcp.adb.device import (
     get_current_app,
     home,
     launch_app,
-    long_press,
     swipe,
     tap,
 )
@@ -49,7 +48,6 @@ __all__ = [
     # Device control
     "tap",
     "double_tap",
-    "long_press",
     "swipe",
     "back",
     "home",

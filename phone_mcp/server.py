@@ -26,7 +26,6 @@ from phone_mcp.adb import (
     list_devices as adb_list_devices,
     get_screenshot as adb_get_screenshot,
     tap as adb_tap,
-    long_press as adb_long_press,
     swipe as adb_swipe,
     back as adb_back,
     home as adb_home,
@@ -169,31 +168,6 @@ def get_screenshot(
 # ============================================================================
 # Touch Control Tools
 # ============================================================================
-
-
-@mcp.tool()
-def long_press(
-    x: int,
-    y: int,
-    duration_ms: int = 3000,
-    device_id: Optional[str] = None,
-    delay: float = 1.0
-) -> Dict[str, Any]:
-    """
-    在屏幕指定坐标长按。
-    Long press at the specified coordinates on the screen.
-    """
-    try:
-        adb_long_press(x, y, duration_ms, device_id, delay)
-        return {
-            "status": "success",
-            "action": "long_press",
-            "x": x,
-            "y": y,
-            "duration_ms": duration_ms
-        }
-    except Exception as e:
-        return {"status": "error", "error": str(e)}
 
 
 @mcp.tool()
@@ -625,7 +599,6 @@ def run(transport: str = "sse", host: str = "0.0.0.0", port: int = 8009, path: s
     print("  - get_screenshot        获取屏幕截图")
     print("  - get_ui_elements       获取UI元素列表 ⭐推荐")
     print("  - tap_element           通过元素点击 ⭐推荐")
-    print("  - long_press            长按屏幕")
     print("  - swipe                 滑动屏幕")
     print("  - type_text             输入文本")
     print("  - clear_text            清除文本")

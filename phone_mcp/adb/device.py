@@ -73,27 +73,6 @@ def double_tap(
     time.sleep(delay)
 
 
-def long_press(
-    x: int,
-    y: int,
-    duration_ms: int = 3000,
-    device_id: str | None = None,
-    delay: float | None = None,
-) -> None:
-    """Long press at the specified coordinates."""
-    if delay is None:
-        delay = TIMING_CONFIG.device.default_long_press_delay
-
-    adb_prefix = _get_adb_prefix(device_id)
-
-    subprocess.run(
-        adb_prefix
-        + ["shell", "input", "swipe", str(x), str(y), str(x), str(y), str(duration_ms)],
-        capture_output=True,
-    )
-    time.sleep(delay)
-
-
 def swipe(
     start_x: int,
     start_y: int,
