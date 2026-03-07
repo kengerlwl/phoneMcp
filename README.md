@@ -11,9 +11,60 @@
   <a href="https://python.org"><img src="https://img.shields.io/badge/python-3.10+-blue?style=flat-square" alt="Python"></a>
 </p>
 
+<p align="center">
+  <a href="https://www.bilibili.com/video/BV1vgcizLEaw/">📺 完整演示视频</a> ·
+  <a href="https://b23.tv/tIW7mVP">🎬 快速上手教程</a>
+</p>
+
+---
+
+## 🎬 演示
+
+> 用自然语言让 AI 帮你操作手机 —— 打开 App、发消息、搜索商品，一句话搞定。
+
+https://github.com/user-attachments/assets/placeholder
+
+<details>
+<summary>📺 更多演示视频</summary>
+
+- [一键让你的手机豆包化，自动操作手机 MCP](https://b23.tv/tIW7mVP) — 31 秒快速演示
+
+</details>
+
 ---
 
 PhoneMCP 是一个基于 [MCP（Model Context Protocol）](https://modelcontextprotocol.io/) 的 Android 设备控制服务器。它通过 ADB 将 Android 手机的操作能力暴露为标准 MCP 工具，让 Claude、Cursor、CatPaw 等 AI 助手可以**直接看到你的手机屏幕、点击按钮、输入文字、打开 App** —— 就像一个真正的 AI 助手在帮你操作手机。
+
+## 🏗️ 工作原理
+
+```
+┌─────────────────────────────────────────────────────────┐
+│                      你的电脑                            │
+│                                                         │
+│  ┌──────────────┐   MCP 协议   ┌──────────────────┐    │
+│  │  AI 助手      │ ◄──────────► │   PhoneMCP       │    │
+│  │              │              │   Server         │    │
+│  │ · Claude     │  SSE/STDIO   │                  │    │
+│  │ · Cursor     │              │  截图 / 点击      │    │
+│  │ · CatPaw     │              │  输入 / 滑动      │    │
+│  │ · ...        │              │  启动App / ...    │    │
+│  └──────────────┘              └────────┬─────────┘    │
+│                                         │ ADB          │
+└─────────────────────────────────────────┼───────────────┘
+                                          │
+                                   USB / WiFi
+                                          │
+                                ┌─────────▼─────────┐
+                                │   Android 手机     │
+                                │                   │
+                                │  📱 屏幕截图       │
+                                │  👆 触控操作       │
+                                │  ⌨️ 文本输入       │
+                                │  📦 应用管理       │
+                                └───────────────────┘
+```
+
+> **核心链路**：AI 助手通过 MCP 协议调用 PhoneMCP → PhoneMCP 通过 ADB 控制手机 → 手机执行操作并返回结果
 
 ## ✨ 功能特性
 
@@ -30,9 +81,47 @@ PhoneMCP 是一个基于 [MCP（Model Context Protocol）](https://modelcontextp
 
 ### 前置要求
 
-1. 安装 [ADB](https://developer.android.com/tools/adb) 并添加到 PATH
+1. 安装 [ADB](https://developer.android.com/tools/adb) 并添加到 PATH（若使用可执行文件则**无需安装**，已内嵌）
 2. Android 手机通过 USB 连接电脑（或通过 WiFi 连接）
-3. 手机开启 **USB 调试**（开发者选项中）
+3. 手机开启 **USB 调试**（见下方教程）
+
+<details>
+<summary>📱 <strong>手机端开启 USB 调试教程（点击展开）</strong></summary>
+
+#### 第一步：开启开发者选项
+
+1. 打开手机 **设置**
+2. 进入 **关于手机**（部分手机在「设置 > 系统 > 关于手机」）
+3. 连续点击 **版本号** 7 次，直到出现「您已进入开发者模式」的提示
+
+> 💡 不同品牌的路径可能略有差异：
+> - **小米/红米**：设置 → 我的设备 → 全部参数与信息 → 连续点击「MIUI 版本」
+> - **华为/荣耀**：设置 → 关于手机 → 连续点击「版本号」
+> - **OPPO/realme**：设置 → 关于手机 → 连续点击「版本号」
+> - **vivo/iQOO**：设置 → 关于手机 → 连续点击「软件版本号」
+> - **三星**：设置 → 关于手机 → 软件信息 → 连续点击「编译编号」
+> - **一加**：设置 → 关于本机 → 连续点击「版本号」
+
+#### 第二步：开启 USB 调试
+
+1. 返回 **设置** 主页
+2. 进入 **系统** → **开发者选项**（部分手机直接在设置列表底部）
+3. 打开 **USB 调试** 开关
+4. 如果有 **USB 安装** 和 **USB 调试（安全设置）**，也一并打开
+
+#### 第三步：连接电脑并授权
+
+1. 用 USB 数据线连接手机和电脑
+2. 手机上会弹出「**允许 USB 调试吗？**」的对话框
+3. 勾选「**始终允许使用这台计算机进行调试**」
+4. 点击 **确定/允许**
+
+> ⚠️ **注意事项**：
+> - 请使用支持数据传输的 USB 线（非纯充电线）
+> - 如果没有弹出授权对话框，尝试拔插 USB 或在终端运行 `adb devices` 触发
+> - 部分手机需要在 USB 连接方式中选择「**文件传输 (MTP)**」模式
+
+</details>
 
 ### 方式一：下载可执行文件（推荐，开箱即用）
 
