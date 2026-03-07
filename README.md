@@ -22,14 +22,11 @@
 
 > 用自然语言让 AI 帮你操作手机 —— 打开 App、发消息、搜索商品，一句话搞定。
 
-https://github.com/user-attachments/assets/placeholder
+<!-- 如果你有 GIF/MP4 演示文件，可以在 GitHub 网页编辑器中拖拽到此处上传，会自动生成链接 -->
 
-<details>
-<summary>📺 更多演示视频</summary>
+[![演示视频](https://i2.hdslb.com/bfs/archive/7f854a8e4160da37e191cf3700c63cc5448bdb71.jpg)](https://www.bilibili.com/video/BV1vgcizLEaw/)
 
-- [一键让你的手机豆包化，自动操作手机 MCP](https://b23.tv/tIW7mVP) — 31 秒快速演示
-
-</details>
+▶️ [点击观看完整演示视频](https://www.bilibili.com/video/BV1vgcizLEaw/) | [31 秒快速上手](https://b23.tv/tIW7mVP)
 
 ---
 
