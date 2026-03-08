@@ -41,6 +41,7 @@ def get_screenshot(device_id: str | None = None, timeout: int = 10) -> Screensho
             adb_prefix + ["shell", "screencap", "-p", "/sdcard/tmp.png"],
             capture_output=True,
             text=True,
+            encoding="utf-8",
             timeout=timeout,
         )
 
@@ -52,6 +53,7 @@ def get_screenshot(device_id: str | None = None, timeout: int = 10) -> Screensho
             adb_prefix + ["pull", "/sdcard/tmp.png", temp_path],
             capture_output=True,
             text=True,
+            encoding="utf-8",
             timeout=5,
         )
 

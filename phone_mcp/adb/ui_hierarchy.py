@@ -81,6 +81,7 @@ def get_ui_hierarchy_xml(device_id: str | None = None, timeout: int = 15) -> str
         adb_prefix + ["shell", "uiautomator", "dump", dump_path],
         capture_output=True,
         text=True,
+        encoding="utf-8",
         timeout=timeout,
     )
 
@@ -93,6 +94,7 @@ def get_ui_hierarchy_xml(device_id: str | None = None, timeout: int = 15) -> str
             + ["shell", "uiautomator", "dump", "--window-animation-disabled", dump_path],
             capture_output=True,
             text=True,
+            encoding="utf-8",
             timeout=timeout,
         )
         dump_output = (dump_result.stdout + dump_result.stderr).strip()
@@ -105,6 +107,7 @@ def get_ui_hierarchy_xml(device_id: str | None = None, timeout: int = 15) -> str
         adb_prefix + ["shell", "cat", dump_path],
         capture_output=True,
         text=True,
+        encoding="utf-8",
         timeout=5,
     )
 

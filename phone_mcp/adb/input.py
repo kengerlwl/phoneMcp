@@ -35,6 +35,7 @@ def type_text(text: str, device_id: str | None = None) -> None:
             adb_prefix + ["shell", "input", "text", escaped],
             capture_output=True,
             text=True,
+            encoding="utf-8",
         )
     else:
         _type_non_ascii(text, device_id)
@@ -53,6 +54,7 @@ def _type_non_ascii(text: str, device_id: str | None = None) -> None:
         input=text,
         capture_output=True,
         text=True,
+        encoding="utf-8",
     )
     if proc.returncode != 0:
         raise RuntimeError(f"Failed to write temp file: {proc.stderr}")
@@ -65,6 +67,7 @@ def _type_non_ascii(text: str, device_id: str | None = None) -> None:
         adb_prefix + ["shell", "rm", "-f", remote_text_path],
         capture_output=True,
         text=True,
+        encoding="utf-8",
     )
 
 
@@ -79,6 +82,7 @@ def _run_clip_helper(action: str, device_id: str | None = None) -> None:
         ],
         capture_output=True,
         text=True,
+        encoding="utf-8",
         timeout=10,
     )
     if "OK" not in result.stdout:
@@ -101,6 +105,7 @@ def _ensure_clip_helper_on_device(device_id: str | None = None) -> None:
         adb_prefix + ["shell", "test", "-f", remote_path, "&&", "echo", "EXISTS"],
         capture_output=True,
         text=True,
+        encoding="utf-8",
     )
     if "EXISTS" in result.stdout:
         _clip_helper_cache[device_key] = True
@@ -112,6 +117,7 @@ def _ensure_clip_helper_on_device(device_id: str | None = None) -> None:
         adb_prefix + ["push", local_dex, remote_path],
         capture_output=True,
         text=True,
+        encoding="utf-8",
     )
     if push_result.returncode != 0:
         raise RuntimeError(f"Failed to push clip helper: {push_result.stderr}")
@@ -142,6 +148,7 @@ def clear_text(device_id: str | None = None) -> None:
         adb_prefix + ["shell", "input", "keyevent", "KEYCODE_MOVE_END"],
         capture_output=True,
         text=True,
+        encoding="utf-8",
     )
     time.sleep(0.1)
 
@@ -150,6 +157,7 @@ def clear_text(device_id: str | None = None) -> None:
         adb_prefix + ["shell", "input", "keycombination", "113", "29"],
         capture_output=True,
         text=True,
+        encoding="utf-8",
     )
 
     if "Unknown command" in result.stderr or result.returncode != 0:
@@ -167,6 +175,7 @@ def clear_text(device_id: str | None = None) -> None:
         adb_prefix + ["shell", "input", "keyevent", "KEYCODE_DEL"],
         capture_output=True,
         text=True,
+        encoding="utf-8",
     )
 
 
