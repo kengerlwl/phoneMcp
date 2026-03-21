@@ -1,7 +1,7 @@
 # 📱 PhoneMCP — Let AI Control Your Phone
 
 <p align="center">
-  <strong>通过 MCP 协议让 AI 助手直接操控你的 Android 手机</strong>
+  <strong>让 AI 助手直接操控你的 Android 手机 —— 支持 Skill 和 MCP 两种接入方式</strong>
 </p>
 
 <p align="center">
@@ -22,15 +22,22 @@
 
 > 用自然语言让 AI 帮你操作手机 —— 打开 App、发消息、搜索商品，一句话搞定。
 
-<!-- 如果你有 GIF/MP4 演示文件，可以在 GitHub 网页编辑器中拖拽到此处上传，会自动生成链接 -->
-
 [![演示视频](https://i2.hdslb.com/bfs/archive/7f854a8e4160da37e191cf3700c63cc5448bdb71.jpg)](https://www.bilibili.com/video/BV1vgcizLEaw/)
 
 ▶️ [点击观看完整演示视频](https://www.bilibili.com/video/BV1vgcizLEaw/) | [31 秒快速上手](https://b23.tv/tIW7mVP)
 
 ---
 
-PhoneMCP 是一个基于 [MCP（Model Context Protocol）](https://modelcontextprotocol.io/) 的 Android 设备控制服务器。它通过 ADB 将 Android 手机的操作能力暴露为标准 MCP 工具，让 Claude、Cursor、CatPaw 等 AI 助手可以**直接看到你的手机屏幕、点击按钮、输入文字、打开 App** —— 就像一个真正的 AI 助手在帮你操作手机。
+## 💡 这是什么？
+
+PhoneMCP 是一个 **AI 手机操控工具**，通过 ADB 让 AI 助手能够**直接看到你的手机屏幕、点击按钮、输入文字、打开 App** —— 就像一个真正的助手在帮你操作手机。
+
+提供**两种接入方式**，适配不同的 AI 客户端生态：
+
+| 方式 | 适合场景 | 是否需要配置 |
+|------|---------|-------------|
+| **⭐ Skill 模式（推荐）** | CatPaw、Claude Code 等支持 Skill 的客户端 | **零配置**，下载解压即用 |
+| **MCP 模式** | Claude Desktop、Cursor 等 MCP 客户端 | 需要配置 MCP 服务器地址 |
 
 ## 🏗️ 工作原理
 
@@ -38,13 +45,13 @@ PhoneMCP 是一个基于 [MCP（Model Context Protocol）](https://modelcontextp
 ┌─────────────────────────────────────────────────────────┐
 │                      你的电脑                            │
 │                                                         │
-│  ┌──────────────┐   MCP 协议   ┌──────────────────┐    │
-│  │  AI 助手      │ ◄──────────► │   PhoneMCP       │    │
-│  │              │              │   Server         │    │
-│  │ · Claude     │  SSE/STDIO   │                  │    │
-│  │ · Cursor     │              │  截图 / 点击      │    │
-│  │ · CatPaw     │              │  输入 / 滑动      │    │
-│  │ · ...        │              │  启动App / ...    │    │
+│  ┌──────────────┐              ┌──────────────────┐    │
+│  │  AI 助手      │  Skill/CLI  │   PhoneMCP       │    │
+│  │              │ ──────────► │                  │    │
+│  │ · CatPaw    │   或 MCP     │  截图 / 点击      │    │
+│  │ · Claude    │              │  输入 / 滑动      │    │
+│  │ · Cursor    │              │  启动App / ...    │    │
+│  │ · ...       │              │                  │    │
 │  └──────────────┘              └────────┬─────────┘    │
 │                                         │ ADB          │
 └─────────────────────────────────────────┼───────────────┘
@@ -61,11 +68,9 @@ PhoneMCP 是一个基于 [MCP（Model Context Protocol）](https://modelcontextp
                                 └───────────────────┘
 ```
 
-> **核心链路**：AI 助手通过 MCP 协议调用 PhoneMCP → PhoneMCP 通过 ADB 控制手机 → 手机执行操作并返回结果
-
 ## ✨ 功能特性
 
-- 📸 **截图** — 获取手机实时屏幕截图，支持 UI 元素标注
+- 📸 **截图** — 获取手机实时屏幕截图
 - 👆 **触控** — 点击、双击、滑动
 - ⌨️ **输入** — 输入文本（完美支持中文），清除文本
 - 🏠 **按键** — 返回、主页、音量、电源等系统按键
@@ -78,9 +83,10 @@ PhoneMCP 是一个基于 [MCP（Model Context Protocol）](https://modelcontextp
 
 ### 前置要求
 
-1. 安装 [ADB](https://developer.android.com/tools/adb) 并添加到 PATH（若使用可执行文件则**无需安装**，已内嵌）
-2. Android 手机通过 USB 连接电脑（或通过 WiFi 连接）
-3. 手机开启 **USB 调试**（见下方教程）
+1. Android 手机通过 USB 连接电脑（或通过 WiFi 连接）
+2. 手机开启 **USB 调试**（见下方教程）
+
+> 💡 使用可执行文件时**无需安装 ADB**，已内嵌。
 
 <details>
 <summary>📱 <strong>手机端开启 USB 调试教程（点击展开）</strong></summary>
@@ -120,9 +126,83 @@ PhoneMCP 是一个基于 [MCP（Model Context Protocol）](https://modelcontextp
 
 </details>
 
-### 方式一：下载可执行文件（推荐，开箱即用）
+---
 
-从 [Releases 页面](https://github.com/kengerlwl/phoneMcp/releases) 下载对应平台的文件：
+## ⭐ 方式一：Skill 模式（推荐，零配置）
+
+**最简单的方式**：下载 Skill 压缩包，解压到 AI 客户端的 Skill 目录，即刻可用。
+
+### 1. 下载
+
+从 [Releases 页面](https://github.com/kengerlwl/phoneMcp/releases) 下载对应平台的 **Skill 压缩包**：
+
+| 平台 | 下载文件 |
+|------|---------|
+| 🍎 macOS (Apple Silicon) | `phone-mcp-skill-macos-arm64.zip` |
+| 🐧 Linux | `phone-mcp-skill-linux-amd64.zip` |
+| 🪟 Windows | `phone-mcp-skill-windows-amd64.zip` |
+
+### 2. 解压到 Skill 目录
+
+```bash
+# CatPaw
+unzip phone-mcp-skill-macos-arm64.zip -d ~/.catpaw/skills/phone-mcp/
+
+# Claude Code
+unzip phone-mcp-skill-macos-arm64.zip -d ~/.claude/skills/phone-mcp/
+```
+
+解压后的目录结构：
+
+```
+phone-mcp/
+├── SKILL.md      # AI 操作指南（AI 自动读取）
+└── phone-mcp     # 可执行文件（内嵌 ADB）
+```
+
+### 3. 开始使用
+
+连接手机后，直接对 AI 说：
+
+- *"帮我打开微信，给张三发一条消息说'明天见'"*
+- *"截个屏看看手机现在的界面"*
+- *"打开淘宝搜索 iPhone 手机壳"*
+
+AI 会自动读取 SKILL.md，通过 CLI 调用可执行文件来操控你的手机。**无需任何额外配置。**
+
+### CLI 用法
+
+Skill 模式下 AI 会自动调用这些命令，你也可以手动使用：
+
+```bash
+# 检测连接的设备
+./phone-mcp run '{"action":"list_devices"}'
+
+# 截图
+./phone-mcp run '{"action":"screenshot"}'
+
+# 获取屏幕元素
+./phone-mcp run '{"action":"get_ui_elements"}'
+
+# 点击元素
+./phone-mcp run '{"action":"tap_element","text":"微信"}'
+
+# 输入文本
+./phone-mcp run '{"action":"type_text","text":"你好"}'
+
+# 批量执行
+./phone-mcp run '[{"action":"launch_app","name":"微信"},{"action":"wait","seconds":2},{"action":"get_ui_elements"}]'
+```
+
+---
+
+## 🔧 方式二：MCP 服务器模式
+
+适用于 Claude Desktop、Cursor 等支持 MCP 协议的客户端。需要先启动服务器，再在客户端中配置连接。
+
+### 下载
+
+从 [Releases 页面](https://github.com/kengerlwl/phoneMcp/releases) 下载独立可执行文件：
 
 | 平台 | 文件 |
 |------|------|
@@ -130,50 +210,11 @@ PhoneMCP 是一个基于 [MCP（Model Context Protocol）](https://modelcontextp
 | 🪟 Windows | `phone-mcp-windows-amd64.exe` |
 | 🍎 macOS (Apple Silicon) | `phone-mcp-macos-arm64` |
 
-下载后直接运行：
-
-```bash
-# macOS / Linux
-chmod +x phone-mcp-macos-arm64
-./phone-mcp-macos-arm64
-
-# Windows
-phone-mcp-windows-amd64.exe
-```
-
-### 方式二：pip 安装
-
-```bash
-pip install -r requirements.txt
-```
-
-然后运行：
-
-```bash
-python -m phone_mcp
-# 或
-phone-mcp
-```
-
-### 方式三：从源码运行
-
-```bash
-git clone https://github.com/kengerlwl/phoneMcp.git
-cd phoneMcp
-pip install -r requirements.txt
-python main.py
-```
-
-## 🔧 配置 AI 助手
-
-PhoneMCP 启动后，你需要在 AI 客户端（Claude Desktop / Cursor / CatPaw 等）中添加 MCP 服务器配置。
-
 ### SSE 模式（默认，推荐）
 
-启动服务：
-
 ```bash
-./phone-mcp-macos-arm64
+# 启动服务器
+./phone-mcp-macos-arm64 serve
 # 默认监听 http://0.0.0.0:8009
 ```
 
@@ -198,16 +239,25 @@ PhoneMCP 启动后，你需要在 AI 客户端（Claude Desktop / Cursor / CatPa
   "mcpServers": {
     "phone-mcp": {
       "command": "/path/to/phone-mcp-macos-arm64",
-      "args": ["--transport", "stdio"]
+      "args": ["serve", "--transport", "stdio"]
     }
   }
 }
 ```
 
-## 📖 命令行参数
+### 从源码运行
+
+```bash
+git clone https://github.com/kengerlwl/phoneMcp.git
+cd phoneMcp
+pip install -r requirements.txt
+python main.py serve
+```
+
+### 命令行参数
 
 ```
-phone-mcp [选项]
+phone-mcp serve [选项]
 
 选项：
   -t, --transport TYPE   传输模式: sse 或 stdio（默认: sse）
@@ -217,28 +267,30 @@ phone-mcp [选项]
   --guide                显示详细使用指南
 ```
 
-## 🛠️ 提供的 MCP 工具
+---
 
-| 工具 | 说明 |
-|------|------|
-| `list_devices` | 列出已连接设备 |
-| `connect_device` | 连接远程设备（WiFi/TCP） |
-| `disconnect_device` | 断开设备连接 |
-| `get_screenshot` | 获取屏幕截图（支持 UI 标注） |
-| `get_ui_elements` | 获取 UI 元素列表 ⭐ |
-| `tap_element` | 通过索引/文本/ID 点击元素 ⭐ |
-| `tap` | 坐标点击 |
-| `double_tap` | 双击 |
-| `swipe` | 滑动 |
-| `type_text` | 输入文本（支持中文） |
-| `clear_text` | 清除文本 |
-| `press_back` | 返回键 |
-| `press_home` | 主页键 |
-| `press_key` | 发送任意按键 |
-| `launch_app` | 启动应用 |
-| `get_current_app` | 获取当前应用 |
-| `search_apps` | 搜索已安装应用 |
-| `wait` | 等待 |
+## 🛠️ 支持的操作
+
+| 操作 | CLI action | MCP Tool | 说明 |
+|------|-----------|----------|------|
+| 列出设备 | `list_devices` | `list_devices` | 列出已连接的 Android 设备 |
+| 连接设备 | `connect` | `connect_device` | 连接远程设备（WiFi/TCP） |
+| 断开设备 | `disconnect` | `disconnect_device` | 断开设备连接 |
+| 截图 | `screenshot` | `get_screenshot` | 获取屏幕截图 |
+| 获取元素 | `get_ui_elements` | `get_ui_elements` | 获取 UI 元素列表 ⭐ |
+| 点击元素 | `tap_element` | `tap_element` | 通过索引/文本/ID 点击 ⭐ |
+| 坐标点击 | `tap` | — | 点击指定坐标 |
+| 双击 | `double_tap` | — | 双击指定坐标 |
+| 滑动 | `swipe` | `swipe` | 滑动屏幕 |
+| 输入文本 | `type_text` | `type_text` | 输入文本（支持中文） |
+| 清除文本 | `clear_text` | `clear_text` | 清除输入框文本 |
+| 返回键 | `back` | `press_back` | 按返回键 |
+| 主页键 | `home` | `press_home` | 按主页键 |
+| 按键 | `key` | `press_key` | 发送任意按键事件 |
+| 启动应用 | `launch_app` | `launch_app` | 通过名称或包名启动应用 |
+| 当前应用 | `current_app` | `get_current_app` | 获取当前前台应用 |
+| 搜索应用 | `search_apps` | `search_apps` | 搜索已安装应用 |
+| 等待 | `wait` | `wait` | 等待指定时间 |
 
 > 💡 **推荐工作流**：先调用 `get_ui_elements` 获取屏幕元素，再用 `tap_element` 精准点击，比直接使用坐标更可靠。
 
