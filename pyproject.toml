@@ -41,7 +41,7 @@ dev = [
 ]
 
 [project.scripts]
-phone-mcp = "phone_mcp.server:run"
+phone-mcp = "main:main"
 
 [project.urls]
 Homepage = "https://github.com/kengerlwl/phone-mcp"

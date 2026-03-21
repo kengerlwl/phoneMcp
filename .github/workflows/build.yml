@@ -19,14 +19,20 @@ jobs:
           - os: ubuntu-latest
             artifact_name: phone-mcp-linux-amd64
             asset_name: phone-mcp-linux-amd64
+            skill_zip_name: phone-mcp-skill-linux-amd64.zip
+            binary_in_skill: phone-mcp
             adb_url: https://dl.google.com/android/repository/platform-tools-latest-linux.zip
           - os: windows-latest
             artifact_name: phone-mcp.exe
             asset_name: phone-mcp-windows-amd64.exe
+            skill_zip_name: phone-mcp-skill-windows-amd64.zip
+            binary_in_skill: phone-mcp.exe
             adb_url: https://dl.google.com/android/repository/platform-tools-latest-windows.zip
           - os: macos-latest
             artifact_name: phone-mcp-macos-arm64
             asset_name: phone-mcp-macos-arm64
+            skill_zip_name: phone-mcp-skill-macos-arm64.zip
+            binary_in_skill: phone-mcp
             adb_url: https://dl.google.com/android/repository/platform-tools-latest-darwin.zip
 
     runs-on: ${{ matrix.os }}
@@ -113,11 +119,42 @@ jobs:
         run: |
           Move-Item dist/phone-mcp.exe dist/phone-mcp-windows-amd64.exe
 
-      - name: Upload artifact
+      - name: Upload standalone binary artifact
         uses: actions/upload-artifact@v4
         with:
           name: ${{ matrix.asset_name }}
           path: dist/${{ matrix.asset_name }}
+
+      # --- Package Skill zip (binary + SKILL.md) ---
+      - name: Package Skill zip (Linux/macOS)
+        if: matrix.os != 'windows-latest'
+        shell: bash
+        run: |
+          mkdir -p skill-package
+          cp dist/${{ matrix.asset_name }} skill-package/${{ matrix.binary_in_skill }}
+          chmod +x skill-package/${{ matrix.binary_in_skill }}
+          cp SKILL.md skill-package/SKILL.md
+          cd skill-package
+          zip -r ../${{ matrix.skill_zip_name }} .
+          cd ..
+          echo "[CI] Skill package contents:"
+          unzip -l ${{ matrix.skill_zip_name }}
+
+      - name: Package Skill zip (Windows)
+        if: matrix.os == 'windows-latest'
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force -Path skill-package
+          Copy-Item "dist/${{ matrix.asset_name }}" "skill-package/${{ matrix.binary_in_skill }}"
+          Copy-Item "SKILL.md" "skill-package/SKILL.md"
+          Compress-Archive -Path "skill-package/*" -DestinationPath "${{ matrix.skill_zip_name }}"
+          Write-Host "[CI] Skill package created: ${{ matrix.skill_zip_name }}"
+
+      - name: Upload Skill zip artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.skill_zip_name }}
+          path: ${{ matrix.skill_zip_name }}
 
   release:
     needs: build
@@ -151,35 +188,64 @@ jobs:
           body: |
             ## PhoneMCP ${{ steps.get_version.outputs.VERSION }}
 
-            Android 设备控制 MCP Server - 通过 ADB 远程控制 Android 设备
+            Android 设备控制工具 - 通过 ADB 远程控制 Android 设备
 
             ### 🎉 开箱即用
 
             本版本**内嵌了 ADB**，无需预先安装 ADB 即可直接使用！
 
-            ### 下载
-            - **Linux**: `phone-mcp-linux-amd64`
-            - **Windows**: `phone-mcp-windows-amd64.exe`
-            - **macOS (Apple Silicon)**: `phone-mcp-macos-arm64`
+            ---
 
-            ### 前置要求
-            - ~~安装 ADB 并添加到 PATH~~（已内嵌，无需安装）
-            - Android 设备已连接（USB 或 WiFi）
-            - 设备已开启 USB 调试
+            ### 📦 方式一：Skill 模式（⭐ 推荐，零配置）
 
-            ### 使用方法
-            ```bash
-            # SSE 模式（默认）
-            ./phone-mcp-linux-amd64
+            下载对应平台的 **Skill 压缩包**，解压到 Skill 目录即可：
 
-            # 指定端口
-            ./phone-mcp-linux-amd64 --port 8080
+            | 平台 | 下载 | 解压到 |
+            |------|------|--------|
+            | 🍎 macOS | `phone-mcp-skill-macos-arm64.zip` | `~/.catpaw/skills/phone-mcp/` |
+            | 🐧 Linux | `phone-mcp-skill-linux-amd64.zip` | `~/.catpaw/skills/phone-mcp/` |
+            | 🪟 Windows | `phone-mcp-skill-windows-amd64.zip` | `%USERPROFILE%\.catpaw\skills\phone-mcp\` |
 
-            # STDIO 模式（供 Claude Desktop 调用）
-            ./phone-mcp-linux-amd64 --transport stdio
+            解压后目录结构：
+            ```
+            phone-mcp/
+            ├── SKILL.md      # AI 操作指南（AI 自动读取）
+            └── phone-mcp     # 可执行文件
             ```
 
-            ### MCP 客户端配置
+            AI 会自动识别并使用这个 Skill 来操控你的手机，无需任何配置。
+
+            **CLI 用法示例：**
+            ```bash
+            ./phone-mcp run '{"action":"screenshot"}'
+            ./phone-mcp run '{"action":"tap_element","text":"微信"}'
+            ./phone-mcp run '{"action":"list_devices"}'
+            ```
+
+            ---
+
+            ### 🔧 方式二：MCP 服务器模式（需要配置）
+
+            下载单独的可执行文件，启动 MCP 服务器：
+
+            | 平台 | 文件 |
+            |------|------|
+            | 🐧 Linux | `phone-mcp-linux-amd64` |
+            | 🪟 Windows | `phone-mcp-windows-amd64.exe` |
+            | 🍎 macOS | `phone-mcp-macos-arm64` |
+
+            ```bash
+            # 启动 MCP 服务器
+            ./phone-mcp-macos-arm64 serve
+
+            # 或指定端口
+            ./phone-mcp-macos-arm64 serve --port 8080
+
+            # STDIO 模式
+            ./phone-mcp-macos-arm64 serve --transport stdio
+            ```
+
+            MCP 客户端配置：
             ```json
             {
               "mcpServers": {
@@ -189,10 +255,19 @@ jobs:
               }
             }
             ```
+
+            ---
+
+            ### 前置要求
+            - Android 设备已连接（USB 或 WiFi）
+            - 设备已开启 USB 调试
           files: |
             artifacts/phone-mcp-linux-amd64/phone-mcp-linux-amd64
             artifacts/phone-mcp-windows-amd64.exe/phone-mcp-windows-amd64.exe
             artifacts/phone-mcp-macos-arm64/phone-mcp-macos-arm64
+            artifacts/phone-mcp-skill-linux-amd64.zip/phone-mcp-skill-linux-amd64.zip
+            artifacts/phone-mcp-skill-windows-amd64.zip/phone-mcp-skill-windows-amd64.zip
+            artifacts/phone-mcp-skill-macos-arm64.zip/phone-mcp-skill-macos-arm64.zip
           draft: false
           prerelease: false
         env:

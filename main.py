@@ -1,11 +1,12 @@
 #!/usr/bin/env python3
 """
-PhoneMCP - Android 设备控制 MCP Server
+PhoneMCP - Android 设备控制工具
 
 使用方法:
-    phone-mcp                           # 默认启动 (SSE, 0.0.0.0:8009)
-    phone-mcp --port 8080               # 指定端口
-    phone-mcp --transport stdio         # 使用 stdio 传输
+    phone-mcp                           # 默认启动 MCP 服务器 (SSE, 0.0.0.0:8009)
+    phone-mcp serve --port 8080         # MCP 服务器指定端口
+    phone-mcp serve --transport stdio   # MCP STDIO 模式
+    phone-mcp run '{"action":"screenshot"}'   # CLI 模式（Skill 推荐）
 """
 
 import argparse
@@ -21,25 +22,38 @@ BANNER = """
 USAGE_GUIDE = """
 ================== 使用指南 ==================
 
-【功能说明】
-  本工具将 Android 设备控制能力通过 MCP 协议暴露，
-  使 AI 助手可以远程控制你的 Android 设备。
+【两种使用方式】
 
-【提供的 MCP Tools】
+  1. CLI 模式（推荐，零配置，配合 Skill 使用）
+     phone-mcp run '{"action":"screenshot"}'
+     phone-mcp run '{"action":"tap_element","text":"微信"}'
+     phone-mcp run '{"action":"list_devices"}'
+
+  2. MCP 服务器模式（需要在 AI 客户端配置）
+     phone-mcp serve                    # SSE 模式
+     phone-mcp serve -t stdio           # STDIO 模式
+
+【CLI 模式可用的 Actions】
   - list_devices        : 列出已连接设备
-  - connect_device      : 连接远程设备
-  - get_screenshot      : 获取屏幕截图
+  - connect             : 连接远程设备
+  - disconnect          : 断开设备连接
+  - screenshot          : 获取屏幕截图（保存到文件）
   - get_ui_elements     : 获取UI元素列表 ⭐推荐
   - tap_element         : 通过元素点击 ⭐推荐
   - tap                 : 坐标点击
+  - double_tap          : 双击
   - swipe               : 滑动屏幕
   - type_text           : 输入文本
-  - press_back/home     : 按键操作
+  - clear_text          : 清除文本
+  - back                : 返回键
+  - home                : 主页键
+  - key                 : 发送按键事件
   - launch_app          : 启动应用
+  - current_app         : 获取当前应用
+  - search_apps         : 搜索已安装应用
+  - wait                : 等待
 
-【配置 AI 助手】
-  在 Claude Desktop 或其他 MCP 客户端配置:
-
+【MCP 客户端配置】
   SSE 模式:
   {
     "mcpServers": {
@@ -54,42 +68,49 @@ USAGE_GUIDE = """
     "mcpServers": {
       "phone-mcp": {
         "command": "/path/to/phone-mcp",
-        "args": ["--transport", "stdio"]
+        "args": ["serve", "--transport", "stdio"]
       }
     }
   }
 
 【前置要求】
-  1. 安装 ADB 并添加到 PATH
-  2. Android 设备已连接（USB 或 WiFi）
-  3. 设备已开启 USB 调试
+  1. Android 设备已连接（USB 或 WiFi）
+  2. 设备已开启 USB 调试
 
 ==============================================
 """
 
 
-def parse_args():
+def main():
+    # Quick detection: if first arg is 'run', route to CLI mode
+    if len(sys.argv) >= 2 and sys.argv[1] == "run":
+        _run_cli_mode()
+        return
+
+    # Quick detection: if first arg is 'serve', route to MCP server mode
+    if len(sys.argv) >= 2 and sys.argv[1] == "serve":
+        _run_serve_mode(sys.argv[2:])
+        return
+
+    # No subcommand or legacy flags → default to MCP server mode (backward compat)
+    _run_serve_mode(sys.argv[1:])
+
+
+def _run_cli_mode():
+    """Handle 'phone-mcp run <json>' CLI mode."""
+    from phone_mcp.cli import cli_main
+
+    # Pass everything after 'run' to cli_main
+    cli_args = sys.argv[2:]
+    cli_main(cli_args)
+
+
+def _run_serve_mode(argv: list):
+    """Handle 'phone-mcp serve [options]' or legacy 'phone-mcp [options]' MCP server mode."""
     parser = argparse.ArgumentParser(
-        description="PhoneMCP - Android 设备控制 MCP Server",
+        description="PhoneMCP MCP Server",
         formatter_class=argparse.RawDescriptionHelpFormatter,
-        epilog="""
-【基本用法】
-  phone-mcp                           # 默认 SSE 模式
-  phone-mcp --transport stdio         # STDIO 模式
-  phone-mcp --port 8080               # 指定端口
-
-【示例】
-  # SSE 模式启动
-  phone-mcp -p 9000
-
-  # STDIO 模式（供 Claude Desktop 调用）
-  phone-mcp -t stdio
-
-【更多信息】
-  GitHub: https://github.com/kengerlwl/phone-mcp
-        """
     )
-
     parser.add_argument(
         "-t", "--transport",
         default="sse",
@@ -122,11 +143,7 @@ def parse_args():
         help="显示详细使用指南"
     )
 
-    return parser.parse_args()
-
-
-def main():
-    args = parse_args()
+    args = parser.parse_args(argv)
 
     # 显示使用指南
     if args.guide:
@@ -148,6 +165,7 @@ def main():
         print()
 
     print("  提示: 使用 --guide 查看详细使用指南")
+    print("  提示: 使用 'phone-mcp run' 进入 CLI 模式（配合 Skill 使用）")
     print("=" * 62)
 
     try:
