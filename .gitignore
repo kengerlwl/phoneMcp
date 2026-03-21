@@ -76,3 +76,4 @@ venv.bak/
 !resources/*.png
 !resources/*.jpg
 
+.catpaw/

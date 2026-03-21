@@ -9,259 +9,173 @@ Control Android devices via ADB through a single CLI executable. No MCP server n
 
 > **Prerequisites**: Android device connected via USB or WiFi with USB debugging enabled.
 
-## Platform-Specific Binary Path
+## Binary Path
 
-The `phone-mcp` binary is located in the same directory as this SKILL.md file:
+The `phone-mcp` binary is in the **same directory as this SKILL.md file**. Determine the absolute path of this SKILL.md's parent directory and use it as the binary path. For example, if this file is at `~/.catpaw/skills/phone-mcp/SKILL.md`, then the binary is `~/.catpaw/skills/phone-mcp/phone-mcp`.
+
+On Windows, the binary is `phone-mcp.exe` in the same directory.
+
+## Step 0: Always Check Device First
+
+Before any phone operation, verify a device is connected:
 
 ```bash
-# macOS / Linux
-<SKILL_DIR>/phone-mcp run '{"action":"list_devices"}'
-
-# Windows (CMD)
-<SKILL_DIR>\phone-mcp.exe run "{\"action\":\"list_devices\"}"
-
-# Windows (PowerShell)
-$json = '{\"action\":\"list_devices\"}'; & "<SKILL_DIR>\phone-mcp.exe" run $json
+<BIN> run '{"action":"list_devices"}'
 ```
 
-> Replace `<SKILL_DIR>` with the actual directory path where this skill is installed (e.g., `~/.catpaw/skills/phone-mcp` or `~/.claude/skills/phone-mcp`).
+If `"count": 0`, tell the user to connect their Android phone via USB and enable USB debugging. **Do not proceed without a connected device.**
 
 ## Core Workflow
 
-Every phone automation follows this pattern:
+Every phone automation follows this loop:
 
-1. **Get UI Elements**: `{"action":"get_ui_elements"}` — get all interactive elements on screen
-2. **Interact**: Use element index or text to tap, type, etc.
-3. **Re-get UI Elements**: After any screen change, get fresh elements
+1. **Observe**: `get_ui_elements` to see what's on screen (structured text data)
+2. **Act**: `tap_element`, `type_text`, `swipe`, etc.
+3. **Re-observe**: After any action that changes the screen, call `get_ui_elements` again
 
 ```bash
-# Step 1: See what's on screen
-<SKILL_DIR>/phone-mcp run '{"action":"get_ui_elements"}'
-# Output includes formatted element list with index, text, bounds, clickable status
+# 1. Observe — see what's on screen
+<BIN> run '{"action":"get_ui_elements"}'
+# Output: list of elements with index, text, bounds, clickable status
 
-# Step 2: Tap an element by text
-<SKILL_DIR>/phone-mcp run '{"action":"tap_element","text":"微信"}'
+# 2. Act — tap an element by its text
+<BIN> run '{"action":"tap_element","text":"微信"}'
 
-# Step 3: After screen changes, get fresh elements
-<SKILL_DIR>/phone-mcp run '{"action":"get_ui_elements"}'
+# 3. Re-observe — screen changed, get fresh elements
+<BIN> run '{"action":"get_ui_elements"}'
 ```
+
+### When to use `screenshot` vs `get_ui_elements`
+
+| Situation | Use |
+|-----------|-----|
+| Need to decide what to tap/interact with | `get_ui_elements` (structured, reliable) |
+| Need to see the visual layout / verify result | `screenshot` (returns image file path) |
+| `get_ui_elements` returns very few elements | `screenshot` + `get_ui_elements` with `"mode":"ocr"` |
+| User asks "show me the screen" | `screenshot` |
+
+**Prefer `get_ui_elements` for decision-making.** Use `screenshot` for visual verification or when you need spatial context.
 
 ## Batch Execution
 
-Pass a JSON array to run multiple commands sequentially. **Stops on first failure.**
+Pass a JSON array for sequential commands. **Stops on first failure.**
 
 ```bash
-<SKILL_DIR>/phone-mcp run '[{"action":"launch_app","name":"微信"},{"action":"wait","seconds":2},{"action":"get_ui_elements"}]'
+<BIN> run '[{"action":"launch_app","name":"微信"},{"action":"wait","seconds":2},{"action":"get_ui_elements"}]'
 ```
 
-**When to batch**: `launch_app + wait + get_ui_elements`, `tap + wait`, `type_text + key` — any sequence where you don't need intermediate output.
+**Batch** when you don't need intermediate output: `launch_app + wait`, `tap + wait`, `type_text + key`.
+**Don't batch** `get_ui_elements` or `screenshot` — you need their output to decide the next step.
 
-**When NOT to batch**: `get_ui_elements` (you need the output to decide next action), `screenshot` (you need to see the image).
+## Command Reference
 
-## Essential Commands
+### Device Management
 
 ```bash
-# --- Device Management ---
-<SKILL_DIR>/phone-mcp run '{"action":"list_devices"}'
-<SKILL_DIR>/phone-mcp run '{"action":"connect","address":"192.168.1.100:5555"}'
-<SKILL_DIR>/phone-mcp run '{"action":"disconnect"}'
-
-# --- Screenshot ---
-<SKILL_DIR>/phone-mcp run '{"action":"screenshot"}'
-# Returns: {"status":"success","path":"/tmp/phone-mcp-screenshot-xxxx.jpg","width":1080,"height":2400}
-# Use the returned path to view the image
-
-<SKILL_DIR>/phone-mcp run '{"action":"screenshot","path":"/tmp/my-screenshot.jpg"}'
-# Save to specific path
-
-# --- UI Elements (⭐ Recommended interaction method) ---
-<SKILL_DIR>/phone-mcp run '{"action":"get_ui_elements"}'
-<SKILL_DIR>/phone-mcp run '{"action":"get_ui_elements","clickable_only":true}'
-<SKILL_DIR>/phone-mcp run '{"action":"get_ui_elements","mode":"ocr"}'
-
-# --- Tap Element (⭐ Recommended, more reliable than coordinates) ---
-<SKILL_DIR>/phone-mcp run '{"action":"tap_element","index":5}'
-<SKILL_DIR>/phone-mcp run '{"action":"tap_element","text":"发送"}'
-<SKILL_DIR>/phone-mcp run '{"action":"tap_element","resource_id":"send_button"}'
-
-# --- Coordinate Tap ---
-<SKILL_DIR>/phone-mcp run '{"action":"tap","x":540,"y":1200}'
-<SKILL_DIR>/phone-mcp run '{"action":"double_tap","x":540,"y":1200}'
-
-# --- Swipe ---
-<SKILL_DIR>/phone-mcp run '{"action":"swipe","start_x":540,"start_y":1800,"end_x":540,"end_y":600}'
-
-# --- Text Input ---
-<SKILL_DIR>/phone-mcp run '{"action":"type_text","text":"Hello 你好"}'
-<SKILL_DIR>/phone-mcp run '{"action":"type_text","text":"新文本","clear_first":true}'
-<SKILL_DIR>/phone-mcp run '{"action":"clear_text"}'
-
-# --- System Keys ---
-<SKILL_DIR>/phone-mcp run '{"action":"back"}'
-<SKILL_DIR>/phone-mcp run '{"action":"home"}'
-<SKILL_DIR>/phone-mcp run '{"action":"key","key":"enter"}'
-<SKILL_DIR>/phone-mcp run '{"action":"key","key":"volume_up"}'
-
-# --- App Control ---
-<SKILL_DIR>/phone-mcp run '{"action":"launch_app","name":"微信"}'
-<SKILL_DIR>/phone-mcp run '{"action":"launch_app","package":"com.tencent.mm"}'
-<SKILL_DIR>/phone-mcp run '{"action":"current_app"}'
-<SKILL_DIR>/phone-mcp run '{"action":"search_apps","keyword":"tencent"}'
-
-# --- Wait ---
-<SKILL_DIR>/phone-mcp run '{"action":"wait","seconds":2}'
+<BIN> run '{"action":"list_devices"}'
+<BIN> run '{"action":"connect","address":"192.168.1.100:5555"}'
+<BIN> run '{"action":"disconnect"}'
 ```
 
-## Common Patterns
-
-### Open App and Navigate
+### Observe Screen
 
 ```bash
-# Launch WeChat
-<SKILL_DIR>/phone-mcp run '{"action":"launch_app","name":"微信"}'
-<SKILL_DIR>/phone-mcp run '{"action":"wait","seconds":2}'
-<SKILL_DIR>/phone-mcp run '{"action":"get_ui_elements"}'
-# Read the element list, find the target, then tap
-<SKILL_DIR>/phone-mcp run '{"action":"tap_element","text":"通讯录"}'
+# Structured element list (preferred for interaction)
+<BIN> run '{"action":"get_ui_elements"}'
+<BIN> run '{"action":"get_ui_elements","clickable_only":true}'
+<BIN> run '{"action":"get_ui_elements","mode":"ocr"}'     # For WebView/games/Flutter
+
+# Visual screenshot (saved to file, returns path)
+<BIN> run '{"action":"screenshot"}'
+<BIN> run '{"action":"screenshot","path":"/tmp/my-screenshot.jpg"}'
 ```
 
-### Send a Message
+### Interact with Elements (⭐ Preferred)
 
 ```bash
-# 1. Launch app and wait
-<SKILL_DIR>/phone-mcp run '[{"action":"launch_app","name":"微信"},{"action":"wait","seconds":2}]'
-
-# 2. Get elements and find search
-<SKILL_DIR>/phone-mcp run '{"action":"get_ui_elements"}'
-<SKILL_DIR>/phone-mcp run '{"action":"tap_element","text":"搜索"}'
-<SKILL_DIR>/phone-mcp run '{"action":"wait","seconds":1}'
-
-# 3. Type contact name and select
-<SKILL_DIR>/phone-mcp run '{"action":"type_text","text":"张三"}'
-<SKILL_DIR>/phone-mcp run '{"action":"wait","seconds":1}'
-<SKILL_DIR>/phone-mcp run '{"action":"get_ui_elements"}'
-<SKILL_DIR>/phone-mcp run '{"action":"tap_element","text":"张三"}'
-<SKILL_DIR>/phone-mcp run '{"action":"wait","seconds":1}'
-
-# 4. Type message and send
-<SKILL_DIR>/phone-mcp run '{"action":"get_ui_elements"}'
-# Find the input box and type
-<SKILL_DIR>/phone-mcp run '{"action":"tap_element","resource_id":"edittext"}'
-<SKILL_DIR>/phone-mcp run '{"action":"type_text","text":"你好，明天见！"}'
-<SKILL_DIR>/phone-mcp run '{"action":"tap_element","text":"发送"}'
+<BIN> run '{"action":"tap_element","index":5}'              # By index from get_ui_elements
+<BIN> run '{"action":"tap_element","text":"发送"}'           # By visible text (fuzzy match)
+<BIN> run '{"action":"tap_element","resource_id":"send_btn"}' # By resource ID
 ```
 
-### Search in an App
+### Coordinate-Based Actions
 
 ```bash
-<SKILL_DIR>/phone-mcp run '[{"action":"launch_app","name":"淘宝"},{"action":"wait","seconds":3}]'
-<SKILL_DIR>/phone-mcp run '{"action":"get_ui_elements"}'
-<SKILL_DIR>/phone-mcp run '{"action":"tap_element","text":"搜索"}'
-<SKILL_DIR>/phone-mcp run '{"action":"type_text","text":"iPhone 手机壳"}'
-<SKILL_DIR>/phone-mcp run '{"action":"key","key":"enter"}'
+<BIN> run '{"action":"tap","x":540,"y":1200}'
+<BIN> run '{"action":"double_tap","x":540,"y":1200}'
+<BIN> run '{"action":"swipe","start_x":540,"start_y":1800,"end_x":540,"end_y":600}'  # Scroll down
+<BIN> run '{"action":"swipe","start_x":540,"start_y":600,"end_x":540,"end_y":1800}'  # Scroll up
 ```
 
-### Scroll and Browse
+### Text Input
 
 ```bash
-# Scroll down to see more content
-<SKILL_DIR>/phone-mcp run '{"action":"swipe","start_x":540,"start_y":1800,"end_x":540,"end_y":600}'
-<SKILL_DIR>/phone-mcp run '{"action":"get_ui_elements"}'
-
-# Scroll up
-<SKILL_DIR>/phone-mcp run '{"action":"swipe","start_x":540,"start_y":600,"end_x":540,"end_y":1800}'
+<BIN> run '{"action":"type_text","text":"Hello 你好"}'            # Type (clears input first by default)
+<BIN> run '{"action":"type_text","text":"追加文本","clear_first":false}'  # Append without clearing
+<BIN> run '{"action":"clear_text"}'
 ```
 
-### Take Screenshot and Analyze
+### System Keys
 
 ```bash
-# Take a screenshot
-<SKILL_DIR>/phone-mcp run '{"action":"screenshot"}'
-# Response: {"status":"success","path":"/tmp/phone-mcp-screenshot-abc123.jpg",...}
-# Then read the image file at the returned path to see what's on screen
+<BIN> run '{"action":"back"}'
+<BIN> run '{"action":"home"}'
+<BIN> run '{"action":"key","key":"enter"}'
+<BIN> run '{"action":"key","key":"volume_up"}'
+```
+
+Key names: `enter`, `delete`, `tab`, `space`, `volume_up`, `volume_down`, `power`, `camera`, `media_play_pause`, `media_next`, `media_previous`, `dpad_up`, `dpad_down`, `dpad_left`, `dpad_right`.
+
+### App Control
+
+```bash
+<BIN> run '{"action":"launch_app","name":"微信"}'            # By common name
+<BIN> run '{"action":"launch_app","package":"com.tencent.mm"}'  # By package name
+<BIN> run '{"action":"current_app"}'
+<BIN> run '{"action":"search_apps","keyword":"tencent"}'     # Find package names
+```
+
+### Wait
+
+```bash
+<BIN> run '{"action":"wait","seconds":2}'
 ```
 
 ## UI Element Detection Modes
 
-| Mode | When to Use |
-|------|------------|
-| `"xml"` (default) | Native Android apps — fast and accurate |
-| `"ocr"` | WebView, games, Flutter, or any app where xml returns few elements |
-| `"auto"` | Auto-detect: tries xml first, falls back to ocr if too few elements |
+| Mode | Best For |
+|------|----------|
+| `"xml"` (default) | Native Android apps — fast and structured |
+| `"ocr"` | WebView, games, Flutter, or when xml returns too few elements |
+| `"auto"` | Auto: tries xml first, falls back to ocr |
+
+## Multi-Device
+
+All commands accept optional `"device_id"` parameter:
 
 ```bash
-# Default XML mode (recommended for most apps)
-<SKILL_DIR>/phone-mcp run '{"action":"get_ui_elements"}'
+<BIN> run '{"action":"list_devices"}'
+# → {"devices":[{"device_id":"R5CR1234","model":"SM-S9080"},...]}
 
-# OCR mode (for web views, games, etc.)
-<SKILL_DIR>/phone-mcp run '{"action":"get_ui_elements","mode":"ocr"}'
-
-# Auto mode
-<SKILL_DIR>/phone-mcp run '{"action":"get_ui_elements","mode":"auto"}'
-```
-
-## Key Name Reference
-
-For `{"action":"key","key":"<name>"}`:
-
-| Key Name | Description |
-|----------|-------------|
-| `enter` | Enter/Confirm |
-| `back` | Back (same as `{"action":"back"}`) |
-| `delete` | Delete/Backspace |
-| `tab` | Tab |
-| `space` | Space |
-| `volume_up` / `volume_down` | Volume |
-| `power` | Power button |
-| `camera` | Camera |
-| `media_play_pause` / `media_next` / `media_previous` | Media controls |
-| `dpad_up` / `dpad_down` / `dpad_left` / `dpad_right` | D-pad navigation |
-
-## Multi-Device Support
-
-All commands support an optional `device_id` parameter for multi-device setups:
-
-```bash
-# List all devices first
-<SKILL_DIR>/phone-mcp run '{"action":"list_devices"}'
-# Response: {"devices":[{"device_id":"R5CR1234","status":"device","model":"SM-S9080"},...]}
-
-# Target a specific device
-<SKILL_DIR>/phone-mcp run '{"action":"screenshot","device_id":"R5CR1234"}'
-<SKILL_DIR>/phone-mcp run '{"action":"tap_element","text":"微信","device_id":"R5CR1234"}'
-```
-
-## Stdin Support
-
-Pipe JSON commands via stdin using `-`:
-
-```bash
-echo '{"action":"list_devices"}' | <SKILL_DIR>/phone-mcp run -
-cat commands.json | <SKILL_DIR>/phone-mcp run -
+<BIN> run '{"action":"screenshot","device_id":"R5CR1234"}'
 ```
 
 ## Error Handling
 
-All commands return JSON with a `status` field:
+All responses are JSON with `"status": "success"` or `"status": "error"`.
 
-```json
-{"status": "success", ...}
-{"status": "error", "error": "Element not found with text='xxx'"}
-```
+| Error | Solution |
+|-------|----------|
+| Element not found | Run `get_ui_elements` to refresh, verify text/index |
+| No devices | Check USB, run `list_devices` |
+| Few elements detected | Switch to `"mode":"ocr"` |
+| Screenshot failed | Device may be on secure screen, retry |
 
-Common errors and solutions:
+## Key Rules
 
-- **Element not found** → Run `get_ui_elements` first to refresh, check if the text/index is correct
-- **No devices found** → Check USB connection, run `list_devices` to verify
-- **Screenshot failed** → Device may be on a secure screen (e.g., banking app), try again
-- **get_ui_elements returns few elements** → Switch to `"mode":"ocr"` for WebView/game/Flutter apps
-
-## Tips
-
-- **Always use `get_ui_elements` + `tap_element`** instead of coordinate tapping — it's more reliable across different devices and screen sizes.
-- **Batch non-interactive commands** to reduce round-trips (e.g., `launch_app + wait`).
-- **Re-get UI elements** after every screen transition (tap, swipe, navigation).
-- **Use OCR mode** when the default XML mode doesn't detect enough elements.
-- **Add `wait` commands** after launching apps or navigating (apps need time to load).
-- Screenshots are saved as JPEG files. The returned `path` can be used to view the image.
+1. **Always `get_ui_elements` before interacting** — never guess coordinates or element names.
+2. **Always re-observe after screen changes** — tap, swipe, navigation all invalidate previous elements.
+3. **Prefer `tap_element` over `tap`** — text/index-based tapping is more reliable than coordinates.
+4. **Add `wait` after launching apps** — apps need 1-3 seconds to load.
+5. **Don't hardcode UI flows** — different phones have different UI. Always read `get_ui_elements` output and adapt.
 

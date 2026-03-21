@@ -17,10 +17,8 @@ import sys
 import tempfile
 import time
 import uuid
-from typing import Any, Dict, List, Optional
 
 from phone_mcp.adb.adb_binary import init_adb
-
 
 # ---------------------------------------------------------------------------
 # Global UI element cache (persisted across batch commands within one invocation)
