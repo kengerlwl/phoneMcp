@@ -1,3 +1,5 @@
+[![MseeP.ai Security Assessment Badge](https://mseep.net/pr/kengerlwl-phonemcp-badge.png)](https://mseep.ai/app/kengerlwl-phonemcp)
+
 # 📱 PhoneMCP — Let AI Control Your Phone
 
 <p align="center">
